@@ -13,10 +13,10 @@ jobs:
     
     steps:
     - name: Checkout代码
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     
     - name: 设置Python环境
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.9'
     
@@ -35,7 +35,7 @@ jobs:
         pyinstaller build_exe.spec
     
     - name: 上传EXE文件
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: 链接提取工具-Windows
         path: dist/*.exe
