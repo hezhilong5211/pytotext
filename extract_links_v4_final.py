@@ -874,6 +874,145 @@ def extract_autohome_info(url):
             'status': f'failed: {str(e)[:50]}'
         }
 
+def extract_yiche_info(url):
+    """易车网提取（视频、文章） - 使用Playwright获取完整作者名"""
+    
+    # 尝试使用Playwright获取完整信息
+    if PLAYWRIGHT_AVAILABLE:
+        try:
+            from playwright.sync_api import sync_playwright
+            import time
+            
+            with sync_playwright() as p:
+                # 查找浏览器可执行文件
+                chrome_exe_path = None
+                if os.environ.get('PLAYWRIGHT_BROWSERS_PATH'):
+                    browsers_path = os.environ.get('PLAYWRIGHT_BROWSERS_PATH')
+                    import glob
+                    chrome_patterns = [
+                        os.path.join(browsers_path, 'chromium-*', 'chrome-win', 'chrome.exe'),
+                        os.path.join(browsers_path, 'chromium-*', 'chrome.exe'),
+                        os.path.join(browsers_path, 'chromium', 'chrome-win', 'chrome.exe'),
+                    ]
+                    for pattern in chrome_patterns:
+                        matches = glob.glob(pattern)
+                        if matches:
+                            chrome_exe_path = matches[0]
+                            break
+                
+                # 启动浏览器
+                launch_args = {
+                    'headless': True,
+                    'args': ['--disable-blink-features=AutomationControlled', '--disable-dev-shm-usage', '--no-sandbox']
+                }
+                if chrome_exe_path:
+                    launch_args['executable_path'] = chrome_exe_path
+                
+                browser = p.chromium.launch(**launch_args)
+                page = browser.new_page()
+                
+                # 访问页面
+                page.goto(url, wait_until='networkidle', timeout=20000)
+                time.sleep(2)  # 等待JavaScript执行
+                
+                # 提取标题
+                title = None
+                title_elem = page.query_selector('h2')
+                if title_elem:
+                    title = title_elem.inner_text().strip()
+                
+                # 提取作者 - 从右侧作者卡片
+                author = None
+                # 尝试多个选择器
+                author_selectors = [
+                    '.yc-author-card .author-name',  # 常见的作者卡片
+                    '[class*="author"] [class*="name"]',
+                    '.author-info .name',
+                    'div[class*="author-name"]',
+                ]
+                
+                for selector in author_selectors:
+                    try:
+                        author_elem = page.query_selector(selector)
+                        if author_elem:
+                            author_text = author_elem.inner_text().strip()
+                            if author_text and len(author_text) < 50:
+                                author = author_text
+                                break
+                    except:
+                        pass
+                
+                # 如果没找到作者，从页面所有文本中查找
+                if not author:
+                    # 获取userId
+                    content = page.content()
+                    user_id_match = re.search(r'userId["\']?\s*:\s*["\']?(\d+)', content)
+                    if user_id_match:
+                        author = f'易车ID{user_id_match.group(1)}'
+                
+                browser.close()
+                
+                if title and author:
+                    return {
+                        'title': title,
+                        'author': author,
+                        'status': 'success'
+                    }
+        except Exception as e:
+            # Playwright失败，降级到requests方案
+            pass
+    
+    # 降级方案：使用requests快速提取
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        }
+        
+        response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
+        response.encoding = 'utf-8'
+        
+        title = None
+        author = None
+        
+        # 从JavaScript变量提取
+        js_match = re.search(r'var\s+_selfPageData\s*=\s*({.+?});', response.text, re.DOTALL)
+        if js_match:
+            data_str = js_match.group(1)
+            
+            # 提取userId
+            user_id_match = re.search(r'userId["\']?\s*:\s*["\']?(\d+)', data_str)
+            if user_id_match:
+                author = f'易车ID{user_id_match.group(1)}'
+            
+            # 提取标题
+            title_match = re.search(r'title["\']?\s*:\s*["\'](.+?)["\']', data_str)
+            if title_match:
+                import html
+                title = html.unescape(title_match.group(1)).strip('"\'')
+                title = re.sub(r'_易车视频$|_易车$', '', title).strip()
+        
+        # 备用：从HTML提取
+        if not title:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            h2_tag = soup.find('h2')
+            if h2_tag:
+                title = h2_tag.text.strip()
+            elif soup.find('title'):
+                title = soup.find('title').text.strip()
+                title = re.sub(r'_易车视频$|_易车$', '', title)
+        
+        return {
+            'title': title if title else '未找到标题',
+            'author': author if author else '未找到作者',
+            'status': 'success' if (title and author) else 'partial'
+        }
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '提取失败',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
 def extract_general_info(url):
     """通用提取"""
     try:
@@ -1735,6 +1874,8 @@ def extract_platform_info(url):
         return extract_dripcar_info(url)
     elif 'maiche.com' in url_lower:
         return extract_maiche_info(url)
+    elif 'yiche.com' in url_lower:
+        return extract_yiche_info(url)
     else:
         return extract_general_info(url)
 
