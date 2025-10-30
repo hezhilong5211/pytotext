@@ -123,5 +123,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=None,  # 如果有图标文件，在这里指定路径
+    uac_admin=True,  # 请求管理员权限
+    uac_uiaccess=False,
 )
 

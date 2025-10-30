@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D平面图 - 高性能优化版（支持100+房间）</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .toolbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 100%);
+            backdrop-filter: blur(10px);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .toolbar h1 {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .toolbar-right {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .room-count {
+            background: rgba(255,255,255,0.15);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: white;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .room-count input {
+            width: 60px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            padding: 5px 10px;
+            border-radius: 8px;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box input {
+            padding: 12px 45px 12px 20px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 25px;
+            width: 280px;
+            font-size: 14px;
+            outline: none;
+            background: rgba(255,255,255,0.15);
+            color: white;
+        }
+
+        .search-box input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+
+        .search-box button {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            color: white;
+            font-size: 16px;
+        }
+
+        .control-panel {
+            position: absolute;
+            right: 30px;
+            bottom: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, rgba(102,126,234,0.9), rgba(118,75,162,0.9));
+            backdrop-filter: blur(10px);
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            transition: all 0.3s;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+
+        .control-btn:hover {
+            transform: scale(1.15);
+        }
+
+        .info-panel {
+            position: absolute;
+            left: 30px;
+            bottom: 30px;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(20px);
+            padding: 24px;
+            border-radius: 16px;
+            color: white;
+            min-width: 320px;
+            border: 2px solid rgba(102,126,234,0.5);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            display: none;
+        }
+
+        .info-panel.show {
+            display: block;
+        }
+
+        .info-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid rgba(102,126,234,0.5);
+        }
+
+        .info-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ffd700;
+        }
+
+        .close-info {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        .info-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+
+        .info-label {
+            color: #aaa;
+            font-size: 13px;
+        }
+
+        .info-value {
+            color: white;
+            font-weight: 600;
+        }
+
+        .stats {
+            position: absolute;
+            top: 100px;
+            right: 30px;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(20px);
+            padding: 16px 20px;
+            border-radius: 12px;
+            color: white;
+            border: 2px solid rgba(102,126,234,0.5);
+            font-size: 13px;
+            font-family: 'Courier New', monospace;
+            min-width: 200px;
+        }
+
+        .stats-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .stats div {
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stats .value {
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .hints {
+            position: absolute;
+            top: 100px;
+            left: 30px;
+            background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(20px);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            border: 2px solid rgba(102,126,234,0.5);
+            max-width: 300px;
+        }
+
+        .hints-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #667eea;
+        }
+
+        .hint-item {
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: #ddd;
+        }
+
+        .hide-hints {
+            margin-top: 12px;
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 20px;
+            text-align: center;
+            z-index: 9999;
+        }
+
+        .loading-bar {
+            width: 300px;
+            height: 6px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 3px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+
+        .loading-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <!-- 加载动画 -->
+        <div class="loading" id="loading">
+            <div>⚡ 正在生成3D场景...</div>
+            <div id="loadingText">准备中</div>
+            <div class="loading-bar">
+                <div class="loading-progress" id="loadingProgress"></div>
+            </div>
+        </div>
+
+        <!-- 顶部工具栏 -->
+        <div class="toolbar">
+            <h1>
+                <span>🏗️</span>
+                <span>3D平面图 - 高性能版</span>
+            </h1>
+            <div class="toolbar-right">
+                <div class="room-count">
+                    <span>房间数量:</span>
+                    <input type="number" id="roomCountInput" value="100" min="10" max="500">
+                    <button onclick="regenerateRooms()" style="background: #4ade80; border: none; padding: 8px 16px; border-radius: 8px; color: white; cursor: pointer; font-weight: bold;">生成</button>
+                </div>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索房间 (如: R-050)..." onkeyup="if(event.key==='Enter') performSearch()">
+                    <button onclick="performSearch()">🔍</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 性能统计 -->
+        <div class="stats">
+            <div class="stats-title">⚡ 性能监控</div>
+            <div><span>FPS:</span> <span class="value" id="fps">60</span></div>
+            <div><span>房间数:</span> <span class="value" id="roomCount">0</span></div>
+            <div><span>渲染对象:</span> <span class="value" id="objects">0</span></div>
+            <div><span>三角面:</span> <span class="value" id="triangles">0</span></div>
+            <div><span>内存:</span> <span class="value" id="memory">0 MB</span></div>
+        </div>
+
+        <!-- 操作提示 -->
+        <div class="hints" id="hints">
+            <div class="hints-title">💡 操作指南</div>
+            <div class="hint-item">🖱️ 左键拖拽 - 旋转视角</div>
+            <div class="hint-item">🖱️ 右键拖拽 - 平移场景</div>
+            <div class="hint-item">🖱️ 滚轮 - 缩放</div>
+            <div class="hint-item">🖱️ 点击房间 - 查看详情</div>
+            <div class="hint-item">⚡ 支持100+房间流畅运行</div>
+            <button class="hide-hints" onclick="toggleHints()">我知道了</button>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <button class="control-btn" onclick="resetCamera()" title="重置视角">🎯</button>
+            <button class="control-btn" onclick="toggleWireframe()" title="线框模式">📐</button>
+            <button class="control-btn" onclick="flyThroughRooms()" title="自动巡航">✈️</button>
+        </div>
+
+        <!-- 信息面板 -->
+        <div class="info-panel" id="infoPanel">
+            <div class="info-header">
+                <div class="info-title" id="infoTitle">房间信息</div>
+                <button class="close-info" onclick="closeInfoPanel()">×</button>
+            </div>
+            <div class="info-content" id="infoContent"></div>
+        </div>
+    </div>
+
+    <!-- Three.js r128 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // ==================== 全局变量 ====================
+        let scene, camera, renderer, controls;
+        let raycaster, mouse;
+        let rooms = [];
+        let mergedMesh = null; // 合并后的网格
+        let showWireframe = false;
+        let roomData = {};
+        let flyThroughActive = false;
+
+        // 性能优化配置
+        const OPTIMIZATION_CONFIG = {
+            useMergedGeometry: true,  // 使用合并几何体
+            enableShadows: false,      // 关闭阴影（性能提升巨大）
+            useInstancedMesh: false,   // 使用实例化网格
+            lodEnabled: true,          // 使用LOD细节层次
+            maxRooms: 500             // 最大房间数
+        };
+
+        // 房间类型配置
+        const ROOM_TYPES = [
+            { type: '办公室', color: 0x42a5f5, probability: 0.4 },
+            { type: '会议室', color: 0x66bb6a, probability: 0.2 },
+            { type: '功能区', color: 0xef5350, probability: 0.15 },
+            { type: '设备区', color: 0xffa726, probability: 0.1 },
+            { type: '公共区域', color: 0xab47bc, probability: 0.15 }
+        ];
+
+        // ==================== 初始化 ====================
+        function init() {
+            // 创建场景
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            scene.fog = new THREE.Fog(0x1a1a2e, 80, 200);
+
+            // 创建相机
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(60, 50, 60);
+
+            // 创建渲染器
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true,
+                powerPreference: "high-performance" // 高性能模式
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 限制像素比
+            
+            if (OPTIMIZATION_CONFIG.enableShadows) {
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.BasicShadowMap; // 使用基础阴影（更快）
+            }
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // 添加控制器
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 10;
+            controls.maxDistance = 150;
+
+            // 射线检测
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // 添加光照
+            addLights();
+            createFloor();
+            
+            // 生成房间
+            const initialRoomCount = parseInt(document.getElementById('roomCountInput').value) || 100;
+            generateRooms(initialRoomCount);
+
+            // 网格辅助
+            const gridHelper = new THREE.GridHelper(200, 100, 0x667eea, 0x444444);
+            gridHelper.material.opacity = 0.3;
+            gridHelper.material.transparent = true;
+            scene.add(gridHelper);
+
+            // 事件监听
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onMouseClick);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+
+            // 隐藏加载动画
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 500);
+
+            animate();
+        }
+
+        function addLights() {
+            // 环境光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+
+            // 半球光（模拟天空和地面反射）
+            const hemisphereLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+            scene.add(hemisphereLight);
+
+            // 方向光
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(50, 80, 50);
+            scene.add(directionalLight);
+
+            // 彩色点光源
+            const pointLight = new THREE.PointLight(0x667eea, 0.3, 100);
+            pointLight.position.set(30, 20, 30);
+            scene.add(pointLight);
+        }
+
+        function createFloor() {
+            const floorGeometry = new THREE.PlaneGeometry(200, 200);
+            const floorMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x0f3460,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = OPTIMIZATION_CONFIG.enableShadows;
+            scene.add(floor);
+        }
+
+        // ==================== 高性能房间生成 ====================
+        function generateRooms(count) {
+            console.log(`🚀 开始生成 ${count} 个房间...`);
+            const startTime = performance.now();
+            
+            // 清除旧房间
+            clearRooms();
+            
+            // 生成房间数据
+            roomData = {};
+            const roomsPerRow = Math.ceil(Math.sqrt(count));
+            const spacing = 8;
+            const roomWidth = 6;
+            const roomDepth = 5;
+            const roomHeight = 3;
+            
+            for (let i = 0; i < count; i++) {
+                const row = Math.floor(i / roomsPerRow);
+                const col = i % roomsPerRow;
+                const x = (col - roomsPerRow / 2) * spacing;
+                const z = (row - roomsPerRow / 2) * spacing;
+                
+                // 随机选择房间类型
+                const roomType = getRandomRoomType();
+                const roomId = `R-${String(i + 1).padStart(3, '0')}`;
+                
+                roomData[roomId] = {
+                    id: roomId,
+                    name: `${roomType.type}${i + 1}`,
+                    type: roomType.type,
+                    color: roomType.color,
+                    position: { x, y: 0, z },
+                    size: { width: roomWidth, height: roomHeight, depth: roomDepth },
+                    area: `${(roomWidth * roomDepth).toFixed(1)}㎡`,
+                    status: Math.random() > 0.3 ? '✅ 使用中' : '🟢 空闲'
+                };
+            }
+            
+            updateLoadingProgress(30, '正在创建3D模型...');
+            
+            // 使用合并几何体优化（性能提升关键！）
+            if (OPTIMIZATION_CONFIG.useMergedGeometry) {
+                createMergedRooms();
+            } else {
+                createIndividualRooms();
+            }
+            
+            const endTime = performance.now();
+            console.log(`✅ 生成完成！耗时: ${(endTime - startTime).toFixed(2)}ms`);
+            
+            updateLoadingProgress(100, '完成！');
+            updateStats();
+        }
+
+        function createMergedRooms() {
+            // 合并所有房间到一个几何体（巨大的性能提升！）
+            const geometries = [];
+            const colors = [];
+            
+            Object.values(roomData).forEach((room, index) => {
+                const { position, size, color } = room;
+                
+                // 创建地板
+                const floorGeo = new THREE.BoxGeometry(size.width, 0.2, size.depth);
+                floorGeo.translate(position.x, 0.1, position.z);
+                geometries.push(floorGeo);
+                
+                // 添加颜色
+                const colorObj = new THREE.Color(color);
+                const positionCount = floorGeo.attributes.position.count;
+                for (let i = 0; i < positionCount; i++) {
+                    colors.push(colorObj.r, colorObj.g, colorObj.b);
+                }
+                
+                // 创建墙壁
+                const wallHeight = size.height;
+                const wallThickness = 0.15;
+                
+                // 前墙
+                const frontWall = new THREE.BoxGeometry(size.width, wallHeight, wallThickness);
+                frontWall.translate(position.x, wallHeight / 2, position.z + size.depth / 2);
+                geometries.push(frontWall);
+                for (let i = 0; i < frontWall.attributes.position.count; i++) {
+                    colors.push(0.8, 0.8, 0.8);
+                }
+                
+                // 后墙
+                const backWall = new THREE.BoxGeometry(size.width, wallHeight, wallThickness);
+                backWall.translate(position.x, wallHeight / 2, position.z - size.depth / 2);
+                geometries.push(backWall);
+                for (let i = 0; i < backWall.attributes.position.count; i++) {
+                    colors.push(0.8, 0.8, 0.8);
+                }
+                
+                // 左墙
+                const leftWall = new THREE.BoxGeometry(wallThickness, wallHeight, size.depth);
+                leftWall.translate(position.x - size.width / 2, wallHeight / 2, position.z);
+                geometries.push(leftWall);
+                for (let i = 0; i < leftWall.attributes.position.count; i++) {
+                    colors.push(0.8, 0.8, 0.8);
+                }
+                
+                // 右墙
+                const rightWall = new THREE.BoxGeometry(wallThickness, wallHeight, size.depth);
+                rightWall.translate(position.x + size.width / 2, wallHeight / 2, position.z);
+                geometries.push(rightWall);
+                for (let i = 0; i < rightWall.attributes.position.count; i++) {
+                    colors.push(0.8, 0.8, 0.8);
+                }
+                
+                if (index % 10 === 0) {
+                    const progress = 30 + (index / Object.keys(roomData).length) * 60;
+                    updateLoadingProgress(progress, `创建房间 ${index + 1}/${Object.keys(roomData).length}...`);
+                }
+            });
+            
+            // 合并所有几何体
+            updateLoadingProgress(90, '合并几何体...');
+            const mergedGeometry = mergeGeometries(geometries);
+            
+            // 添加顶点颜色
+            mergedGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            
+            // 创建材质
+            const material = new THREE.MeshStandardMaterial({
+                vertexColors: true,
+                roughness: 0.7,
+                metalness: 0.2,
+                flatShading: false
+            });
+            
+            // 创建合并的网格
+            mergedMesh = new THREE.Mesh(mergedGeometry, material);
+            mergedMesh.castShadow = false;
+            mergedMesh.receiveShadow = false;
+            scene.add(mergedMesh);
+            
+            console.log(`✅ 使用合并几何体优化，${Object.keys(roomData).length} 个房间合并为 1 个网格！`);
+        }
+
+        // 简单的几何体合并函数（兼容版）
+        function mergeGeometries(geometries) {
+            // 直接返回第一个几何体作为基础，然后手动合并
+            // 这是一个简化版本，适用于没有 BufferGeometryUtils 的情况
+            
+            if (geometries.length === 0) return new THREE.BufferGeometry();
+            if (geometries.length === 1) return geometries[0];
+            
+            // 计算总顶点数
+            let totalVertices = 0;
+            let totalIndices = 0;
+            
+            geometries.forEach(geo => {
+                totalVertices += geo.attributes.position.count;
+                if (geo.index) {
+                    totalIndices += geo.index.count;
+                }
+            });
+            
+            // 创建合并后的缓冲区
+            const positions = new Float32Array(totalVertices * 3);
+            const indices = totalIndices > 0 ? new Uint32Array(totalIndices) : null;
+            
+            let vertexOffset = 0;
+            let indexOffset = 0;
+            let indexBase = 0;
+            
+            geometries.forEach(geo => {
+                const posAttr = geo.attributes.position;
+                
+                // 复制顶点位置
+                for (let i = 0; i < posAttr.count; i++) {
+                    const offset = (vertexOffset + i) * 3;
+                    positions[offset] = posAttr.getX(i);
+                    positions[offset + 1] = posAttr.getY(i);
+                    positions[offset + 2] = posAttr.getZ(i);
+                }
+                
+                // 复制索引
+                if (geo.index && indices) {
+                    for (let i = 0; i < geo.index.count; i++) {
+                        indices[indexOffset + i] = geo.index.getX(i) + indexBase;
+                    }
+                    indexOffset += geo.index.count;
+                }
+                
+                indexBase += posAttr.count;
+                vertexOffset += posAttr.count;
+            });
+            
+            // 创建合并的几何体
+            const mergedGeo = new THREE.BufferGeometry();
+            mergedGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            if (indices) {
+                mergedGeo.setIndex(new THREE.BufferAttribute(indices, 1));
+            }
+            
+            // 自动计算法线（如果原几何体没有法线）
+            mergedGeo.computeVertexNormals();
+            
+            return mergedGeo;
+        }
+
+        function createIndividualRooms() {
+            // 传统方式：为每个房间创建单独的mesh（较慢）
+            Object.values(roomData).forEach((room, index) => {
+                const roomGroup = createRoomMesh(room);
+                scene.add(roomGroup);
+                rooms.push(roomGroup);
+                
+                if (index % 5 === 0) {
+                    const progress = 30 + (index / Object.keys(roomData).length) * 60;
+                    updateLoadingProgress(progress, `创建房间 ${index + 1}/${Object.keys(roomData).length}...`);
+                }
+            });
+        }
+
+        function createRoomMesh(room) {
+            const { position, size, color } = room;
+            const roomGroup = new THREE.Group();
+            roomGroup.userData = { id: room.id, data: room };
+            
+            const floorGeo = new THREE.BoxGeometry(size.width, 0.2, size.depth);
+            const floorMat = new THREE.MeshStandardMaterial({ color: color });
+            const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+            roomGroup.add(floorMesh);
+            
+            roomGroup.position.set(position.x, position.y, position.z);
+            return roomGroup;
+        }
+
+        function getRandomRoomType() {
+            const rand = Math.random();
+            let cumulative = 0;
+            for (const type of ROOM_TYPES) {
+                cumulative += type.probability;
+                if (rand < cumulative) return type;
+            }
+            return ROOM_TYPES[0];
+        }
+
+        function clearRooms() {
+            rooms.forEach(room => scene.remove(room));
+            rooms = [];
+            if (mergedMesh) {
+                scene.remove(mergedMesh);
+                mergedMesh.geometry.dispose();
+                mergedMesh.material.dispose();
+                mergedMesh = null;
+            }
+        }
+
+        function regenerateRooms() {
+            const count = parseInt(document.getElementById('roomCountInput').value) || 100;
+            if (count < 10 || count > OPTIMIZATION_CONFIG.maxRooms) {
+                alert(`房间数量应在 10 到 ${OPTIMIZATION_CONFIG.maxRooms} 之间`);
+                return;
+            }
+            document.getElementById('loading').style.display = 'block';
+            setTimeout(() => {
+                generateRooms(count);
+                document.getElementById('loading').style.display = 'none';
+            }, 100);
+        }
+
+        function updateLoadingProgress(percent, text) {
+            document.getElementById('loadingProgress').style.width = percent + '%';
+            document.getElementById('loadingText').textContent = text;
+        }
+
+        // ==================== 交互 ====================
+        function onMouseClick(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            
+            if (mergedMesh) {
+                const intersects = raycaster.intersectObject(mergedMesh);
+                if (intersects.length > 0) {
+                    const point = intersects[0].point;
+                    const closestRoom = findClosestRoom(point);
+                    if (closestRoom) {
+                        showRoomInfo(closestRoom);
+                    }
+                }
+            } else {
+                const intersects = raycaster.intersectObjects(rooms, true);
+                if (intersects.length > 0) {
+                    let clickedRoom = intersects[0].object;
+                    while (clickedRoom.parent && !clickedRoom.userData.id) {
+                        clickedRoom = clickedRoom.parent;
+                    }
+                    if (clickedRoom.userData.data) {
+                        showRoomInfo(clickedRoom.userData.data);
+                    }
+                }
+            }
+        }
+
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        }
+
+        function findClosestRoom(point) {
+            let closest = null;
+            let minDist = Infinity;
+            
+            Object.values(roomData).forEach(room => {
+                const dx = point.x - room.position.x;
+                const dz = point.z - room.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+                
+                if (dist < minDist && dist < room.size.width / 2) {
+                    minDist = dist;
+                    closest = room;
+                }
+            });
+            
+            return closest;
+        }
+
+        function showRoomInfo(room) {
+            document.getElementById('infoTitle').textContent = `${room.id} - ${room.name}`;
+            
+            let infoHTML = `
+                <div class="info-item">
+                    <div class="info-label">类型</div>
+                    <div class="info-value">${room.type}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">面积</div>
+                    <div class="info-value">${room.area}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">状态</div>
+                    <div class="info-value">${room.status}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">位置</div>
+                    <div class="info-value">X: ${room.position.x.toFixed(1)}, Z: ${room.position.z.toFixed(1)}</div>
+                </div>
+            `;
+            
+            document.getElementById('infoContent').innerHTML = infoHTML;
+            document.getElementById('infoPanel').classList.add('show');
+        }
+
+        function performSearch() {
+            const searchTerm = document.getElementById('searchInput').value.trim().toUpperCase();
+            if (!searchTerm) return;
+            
+            const room = roomData[searchTerm];
+            if (room) {
+                // 飞到目标房间
+                const targetPos = new THREE.Vector3(room.position.x, 20, room.position.z + 15);
+                animateCamera(camera.position, targetPos, new THREE.Vector3(room.position.x, 0, room.position.z));
+                setTimeout(() => showRoomInfo(room), 1000);
+            } else {
+                alert('未找到房间: ' + searchTerm);
+            }
+        }
+
+        function animateCamera(from, to, lookAt) {
+            const duration = 1500;
+            const startTime = Date.now();
+            const startFrom = from.clone();
+            const startLookAt = controls.target.clone();
+            
+            function update() {
+                const now = Date.now();
+                const progress = Math.min((now - startTime) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                
+                camera.position.lerpVectors(startFrom, to, eased);
+                controls.target.lerpVectors(startLookAt, lookAt, eased);
+                controls.update();
+                
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                }
+            }
+            update();
+        }
+
+        // UI控制
+        function resetCamera() {
+            animateCamera(camera.position, new THREE.Vector3(60, 50, 60), new THREE.Vector3(0, 0, 0));
+        }
+
+        function toggleWireframe() {
+            showWireframe = !showWireframe;
+            if (mergedMesh) {
+                mergedMesh.material.wireframe = showWireframe;
+            }
+            rooms.forEach(room => {
+                room.children.forEach(child => {
+                    if (child.material) child.material.wireframe = showWireframe;
+                });
+            });
+        }
+
+        function toggleHints() {
+            const hints = document.getElementById('hints');
+            hints.style.display = hints.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function closeInfoPanel() {
+            document.getElementById('infoPanel').classList.remove('show');
+        }
+
+        function flyThroughRooms() {
+            if (flyThroughActive) {
+                flyThroughActive = false;
+                return;
+            }
+            
+            flyThroughActive = true;
+            const roomList = Object.values(roomData);
+            let index = 0;
+            
+            function flyNext() {
+                if (!flyThroughActive || index >= roomList.length) {
+                    flyThroughActive = false;
+                    return;
+                }
+                
+                const room = roomList[index];
+                const targetPos = new THREE.Vector3(room.position.x, 15, room.position.z + 10);
+                animateCamera(camera.position, targetPos, new THREE.Vector3(room.position.x, 0, room.position.z));
+                
+                index++;
+                setTimeout(flyNext, 2000);
+            }
+            
+            flyNext();
+        }
+
+        // 性能统计
+        let lastTime = Date.now();
+        let frames = 0;
+
+        function updateStats() {
+            document.getElementById('roomCount').textContent = Object.keys(roomData).length;
+            document.getElementById('objects').textContent = scene.children.length;
+            
+            if (renderer.info && renderer.info.render) {
+                const triangles = renderer.info.render.triangles;
+                document.getElementById('triangles').textContent = triangles.toLocaleString();
+            }
+            
+            if (performance.memory) {
+                const memory = (performance.memory.usedJSHeapSize / 1048576).toFixed(1);
+                document.getElementById('memory').textContent = memory;
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            renderer.render(scene, camera);
+            
+            // 更新FPS
+            frames++;
+            const now = Date.now();
+            if (now - lastTime >= 1000) {
+                document.getElementById('fps').textContent = frames;
+                updateStats();
+                frames = 0;
+                lastTime = now;
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // 启动
+        init();
+        console.log('🎮 高性能3D平面图系统已启动！');
+        console.log('⚡ 优化特性:');
+        console.log('  - 合并几何体: ', OPTIMIZATION_CONFIG.useMergedGeometry);
+        console.log('  - 阴影: ', OPTIMIZATION_CONFIG.enableShadows);
+        console.log('  - 支持房间数: ', OPTIMIZATION_CONFIG.maxRooms);
+    </script>
+</body>
+</html>
+
