@@ -726,6 +726,14 @@ def extract_bilibili_info(url):
 
 def extract_autohome_info(url):
     """汽车之家专用提取"""
+    # 车家号链接需要登录，使用Playwright处理
+    if 'chejiahao.autohome.com.cn' in url.lower():
+        if PLAYWRIGHT_AVAILABLE:
+            return extract_with_playwright_browser(url)
+        else:
+            # Playwright不可用，降级到requests（可能失败）
+            pass
+    
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
