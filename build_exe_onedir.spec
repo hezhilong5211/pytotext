@@ -106,7 +106,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,  # 禁用upx，避免压缩大文件失败
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
@@ -124,7 +124,7 @@ coll = COLLECT(
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,  # 禁用upx，避免压缩大文件失败
     upx_exclude=[],
     name='链接提取工具',
 )

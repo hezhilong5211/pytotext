@@ -1,9 +1,14 @@
 @echo off
 title Package EXE (Auto Detect Python)
 
+REM 切换到脚本所在目录
+cd /d "%~dp0"
+
 echo ======================================================
 echo   Package EXE - Auto Detect Python
 echo ======================================================
+echo.
+echo Current directory: %CD%
 echo.
 
 REM 尝试找到Python命令
@@ -83,7 +88,18 @@ echo.
 
 echo [3/3] Start packaging...
 echo ------------------------------------------------------
+if not exist "build_exe_onedir.spec" (
+    echo ERROR: build_exe_onedir.spec not found
+    echo Current directory: %CD%
+    echo Files in directory:
+    dir /b *.spec
+    pause
+    exit /b 1
+)
+
 echo Using command: %PYTHON_CMD% -m PyInstaller
+echo Spec file: build_exe_onedir.spec
+echo.
 %PYTHON_CMD% -m PyInstaller build_exe_onedir.spec --clean --log-level INFO
 echo.
 
