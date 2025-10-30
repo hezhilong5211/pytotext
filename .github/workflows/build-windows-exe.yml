@@ -46,16 +46,13 @@ jobs:
     
     - name: 检查打包结果
       run: |
-        echo "=== 检查dist目录 ==="
-        if (Test-Path dist) {
-          Get-ChildItem dist -Recurse | Format-Table Name, Length -AutoSize
-        } else {
-          echo "错误: dist目录不存在！"
-        }
-        echo ""
-        echo "=== 检查当前目录所有文件 ==="
-        Get-ChildItem . -Recurse -File | Where-Object {$_.Extension -eq ".exe"} | Format-Table FullName, Length -AutoSize
-      shell: powershell
+        Write-Host "=== Checking dist directory ==="
+        if (Test-Path dist) { Get-ChildItem dist -Recurse | Select-Object Name, Length }
+        if (-not (Test-Path dist)) { Write-Host "ERROR: dist directory not found!" }
+        Write-Host ""
+        Write-Host "=== Searching for .exe files ==="
+        Get-ChildItem . -Recurse -File -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object FullName, Length
+      shell: pwsh
     
     - name: 上传EXE文件
       uses: actions/upload-artifact@v4
