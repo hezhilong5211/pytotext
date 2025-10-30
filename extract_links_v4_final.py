@@ -1184,18 +1184,43 @@ def extract_dongchedi_info(url):
     
     try:
         with sync_playwright() as p:
+            # 查找浏览器可执行文件路径
+            chrome_exe_path = None
+            if os.environ.get('PLAYWRIGHT_BROWSERS_PATH'):
+                browsers_path = os.environ.get('PLAYWRIGHT_BROWSERS_PATH')
+                dcd_debug_log(f"[DEBUG-DCD] 浏览器路径: {browsers_path}")
+                
+                # 查找chromium下的chrome.exe
+                import glob
+                chrome_patterns = [
+                    os.path.join(browsers_path, 'chromium-*', 'chrome-win', 'chrome.exe'),
+                    os.path.join(browsers_path, 'chromium-*', 'chrome.exe'),
+                    os.path.join(browsers_path, 'chromium', 'chrome-win', 'chrome.exe'),
+                ]
+                for pattern in chrome_patterns:
+                    matches = glob.glob(pattern)
+                    if matches:
+                        chrome_exe_path = matches[0]
+                        dcd_debug_log(f"[DEBUG-DCD] 找到Chrome: {chrome_exe_path}")
+                        break
+            
             # 启动浏览器
             browser = None
             try:
                 dcd_debug_log(f"[DEBUG-DCD] 尝试启动Chromium浏览器...")
-                browser = p.chromium.launch(
-                    headless=True,
-                    args=[
+                launch_args = {
+                    'headless': True,
+                    'args': [
                         '--disable-blink-features=AutomationControlled',
                         '--disable-dev-shm-usage',
                         '--no-sandbox'
                     ]
-                )
+                }
+                if chrome_exe_path:
+                    launch_args['executable_path'] = chrome_exe_path
+                    dcd_debug_log(f"[DEBUG-DCD] 使用指定路径: {chrome_exe_path}")
+                
+                browser = p.chromium.launch(**launch_args)
                 dcd_debug_log(f"[DEBUG-DCD] ✓ 浏览器启动成功")
             except Exception as e:
                 error_msg = str(e)
