@@ -42,47 +42,26 @@ except ImportError:
 # 创建全局Session
 session = requests.Session()
 
-# 懂车帝调试日志文件路径（保存到桌面）
-def get_desktop_path():
-    """获取桌面路径"""
-    try:
-        if os.name == 'nt':  # Windows
-            desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop')
-        else:  # Mac/Linux
-            desktop = os.path.join(os.path.expanduser('~'), 'Desktop')
-        if os.path.exists(desktop):
-            return desktop
-    except:
-        pass
-    return os.getcwd()  # 如果找不到桌面，使用当前目录
+# 全局GUI日志函数引用（由GUI设置）
+_gui_log_function = None
 
-DCD_DEBUG_LOG_FILE = os.path.join(get_desktop_path(), 'dongchedi_debug.log')
-_dcd_log_initialized = False
+def set_gui_log_function(log_func):
+    """设置GUI日志函数（由GUI调用）"""
+    global _gui_log_function
+    _gui_log_function = log_func
 
+# 懂车帝调试日志
 def dcd_debug_log(message):
-    """懂车帝调试日志：同时输出到控制台和文件"""
-    global _dcd_log_initialized
-    
-    # 首次调用时清空旧日志
-    if not _dcd_log_initialized:
+    """懂车帝调试日志：优先输出到GUI，同时也print"""
+    # 如果在GUI环境，直接输出到GUI日志框
+    if _gui_log_function is not None:
         try:
-            with open(DCD_DEBUG_LOG_FILE, 'w', encoding='utf-8') as f:
-                f.write(f"=== 懂车帝调试日志 - {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n\n")
-            abs_path = os.path.abspath(DCD_DEBUG_LOG_FILE)
-            print(f"\n💾 懂车帝调试日志保存位置: {abs_path}\n", flush=True)
-        except Exception as e:
-            print(f"\n⚠️ 无法创建日志文件: {e}\n", flush=True)
-        _dcd_log_initialized = True
+            _gui_log_function(message, "info")
+        except:
+            pass
     
-    timestamp = time.strftime("%H:%M:%S")
-    log_message = f"[{timestamp}] {message}"
-    print(log_message, flush=True)
-    
-    try:
-        with open(DCD_DEBUG_LOG_FILE, 'a', encoding='utf-8') as f:
-            f.write(log_message + '\n')
-    except:
-        pass
+    # 同时也print（方便命令行调试）
+    print(message, flush=True)
 
 def read_excel_with_links(file_path):
     """读取Excel文件并提取所有链接"""
@@ -1117,17 +1096,6 @@ def extract_dongchedi_info(url):
             browser.close()
             
             dcd_debug_log(f"[DEBUG-DCD] HTML内容长度: {len(html_content)} 字符")
-            
-            # 保存HTML内容到文件用于调试（保存到桌面，仅保存第一个）
-            try:
-                debug_file = os.path.join(get_desktop_path(), 'dongchedi_page.html')
-                if not os.path.exists(debug_file):
-                    with open(debug_file, 'w', encoding='utf-8') as f:
-                        f.write(html_content)
-                    abs_path = os.path.abspath(debug_file)
-                    dcd_debug_log(f"[DEBUG-DCD] HTML已保存到: {abs_path}")
-            except Exception as e:
-                dcd_debug_log(f"[DEBUG-DCD] 保存HTML失败: {str(e)}")
             
             if not html_content or len(html_content) < 500:
                 dcd_debug_log(f"[DEBUG-DCD] 错误: 页面内容太短")

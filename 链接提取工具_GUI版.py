@@ -19,7 +19,8 @@ from extract_links_v4_final import (
     extract_title_and_author,
     extract_with_playwright_browser,
     is_baidu_or_douyin,
-    PLAYWRIGHT_AVAILABLE
+    PLAYWRIGHT_AVAILABLE,
+    set_gui_log_function  # 导入GUI日志函数设置器
 )
 import openpyxl
 from openpyxl.styles import PatternFill
@@ -373,6 +374,9 @@ class LinkExtractorGUI:
         if not os.path.exists(self.input_file):
             messagebox.showerror("错误", "输入文件不存在！")
             return
+        
+        # 设置GUI日志函数（让懂车帝调试日志输出到GUI）
+        set_gui_log_function(self.log)
         
         # 禁用开始按钮，启用停止按钮
         self.start_button.config(state=tk.DISABLED)
