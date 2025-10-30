@@ -1053,21 +1053,36 @@ def extract_dongchedi_info(url):
             
             # 访问页面
             try:
-                page.goto(url, wait_until='networkidle', timeout=30000)
-                time.sleep(5)  # 增加等待时间，确保JS完全渲染
+                page.goto(url, wait_until='networkidle', timeout=35000)
+                time.sleep(3)
             except:
                 try:
-                    page.goto(url, wait_until='domcontentloaded', timeout=20000)
-                    time.sleep(5)  # 增加等待时间
-                except:
+                    page.goto(url, wait_until='domcontentloaded', timeout=25000)
                     time.sleep(3)
+                except:
+                    time.sleep(2)
             
-            # 额外等待确保作者信息加载完成
+            # 滚动页面触发懒加载（作者信息可能需要滚动才加载）
             try:
-                # 等待可能包含作者信息的元素
-                page.wait_for_timeout(2000)  # 再等2秒
+                page.evaluate('window.scrollTo(0, 500)')
+                time.sleep(1)
+                page.evaluate('window.scrollTo(0, 0)')
+                time.sleep(1)
             except:
                 pass
+            
+            # 额外等待确保作者信息加载完成（Windows环境需要更长时间）
+            try:
+                page.wait_for_timeout(3000)  # 等3秒
+            except:
+                pass
+            
+            # 尝试等待作者相关元素（如果存在）
+            try:
+                # 等待可能的作者容器
+                page.wait_for_selector('[class*="author"], [class*="user"]', timeout=5000)
+            except:
+                pass  # 超时不影响继续
             
             # 获取页面内容
             html_content = page.content()
@@ -1110,19 +1125,27 @@ def extract_dongchedi_info(url):
                     title = meta_title.get('content', '').strip()
             
             # 提取作者
-            # 方法1: 从JSON数据提取（扩展更多模式）
+            # 方法1: 从JSON数据提取（更宽松的模式匹配）
             json_patterns = [
-                r'"author"\s*:\s*{\s*[^}]*"name"\s*:\s*"([^"]+)"',
+                # 精确模式
                 r'"author_name"\s*:\s*"([^"]{2,30})"',
+                r'"author"\s*:\s*{\s*[^}]{0,200}"name"\s*:\s*"([^"]{2,30})"',
                 r'"user_name"\s*:\s*"([^"]{2,30})"',
                 r'"userName"\s*:\s*"([^"]{2,30})"',
+                # 宽松模式（允许更多字符）
+                r'"author"\s*:\s*\{[^}]{0,500}?"name"\s*:\s*"([^"]{2,50})"',
+                r'"user"\s*:\s*\{[^}]{0,500}?"name"\s*:\s*"([^"]{2,50})"',
+                # 简化模式
+                r'author[^:]*:\s*[^{]*{\s*[^}]*name[^:]*:\s*"([^"]{2,30})"',
+                # 其他字段
                 r'"nickname"\s*:\s*"([^"]{2,30})"',
                 r'"screen_name"\s*:\s*"([^"]{2,30})"',
-                r'"source"\s*:\s*"([^"]{2,30})"',
                 r'"media_name"\s*:\s*"([^"]{2,30})"',
-                r'"name"\s*:\s*"([^"]{2,30})"',  # 通用name字段
-                r'"creator"\s*:\s*"([^"]{2,30})"',  # 创建者
-                r'"publisher"\s*:\s*"([^"]{2,30})"',  # 发布者
+                r'"source"\s*:\s*"([^"]{2,30})"',
+                r'"creator"\s*:\s*"([^"]{2,30})"',
+                r'"publisher"\s*:\s*"([^"]{2,30})"',
+                # 最宽松的name（放最后，容易误匹配）
+                r'"name"\s*:\s*"([^"]{2,30})"',
             ]
             
             for pattern in json_patterns:
@@ -1145,20 +1168,36 @@ def extract_dongchedi_info(url):
                     if author:
                         break
             
-            # 方法2: 从HTML元素提取
+            # 方法2: 从HTML元素提取（扩展选择器）
             if not author:
-                author_selectors = [
-                    {'class': re.compile('author|writer|creator', re.I)},
-                    {'class': re.compile('source|publisher', re.I)},
-                    {'class': re.compile('user|username', re.I)},
+                # 使用CSS选择器查找
+                author_css_patterns = [
+                    '[class*="author"]',
+                    '[class*="writer"]',
+                    '[class*="user-name"]',
+                    '[class*="username"]',
+                    '[class*="creator"]',
+                    '[class*="source"]',
+                    '[data-author]',
+                    '[data-user-name]',
                 ]
-                for selector in author_selectors:
-                    elem = soup.find('span', selector) or soup.find('a', selector) or soup.find('div', selector)
-                    if elem:
-                        text = elem.get_text().strip()
-                        if text and 2 <= len(text) <= 30 and text not in ['懂车帝', '']:
-                            author = text
+                
+                for pattern in author_css_patterns:
+                    try:
+                        elements = soup.select(pattern)
+                        for elem in elements[:5]:  # 最多查看前5个
+                            text = elem.get_text().strip()
+                            # 清理文本（移除空格、换行）
+                            text = ' '.join(text.split())
+                            if text and 2 <= len(text) <= 30:
+                                # 排除平台名和无效文本
+                                if text not in ['懂车帝', 'dongchedi', '今日头条', '关注', '已关注', '查看更多']:
+                                    author = text
+                                    break
+                        if author:
                             break
+                    except:
+                        continue
             
             # 方法3: meta标签
             if not author:
