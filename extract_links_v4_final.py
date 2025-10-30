@@ -24,12 +24,14 @@ import sys
 
 # 设置Playwright浏览器路径（用于打包后的exe）
 if getattr(sys, 'frozen', False):
-    # 如果是打包后的exe
-    base_path = sys._MEIPASS
-    playwright_browser_path = os.path.join(base_path, 'playwright_browsers')
-    if os.path.exists(playwright_browser_path):
-        os.environ['PLAYWRIGHT_BROWSERS_PATH'] = playwright_browser_path
-        print(f"✅ 使用打包的Playwright浏览器: {playwright_browser_path}")
+    # 如果是打包后的exe，使用用户本地安装的浏览器
+    # Windows: C:\Users\xxx\AppData\Local\ms-playwright
+    local_playwright_path = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'ms-playwright')
+    if os.path.exists(local_playwright_path):
+        os.environ['PLAYWRIGHT_BROWSERS_PATH'] = local_playwright_path
+        print(f"✅ 使用本地Playwright浏览器: {local_playwright_path}", flush=True)
+    else:
+        print(f"⚠️ 未找到Playwright浏览器，请运行: python -m playwright install chromium", flush=True)
 
 # 尝试导入Playwright（今日头条专用）
 try:

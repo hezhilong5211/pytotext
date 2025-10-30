@@ -309,6 +309,14 @@ class LinkExtractorGUI:
         self.log("程序已启动", "info")
         if PLAYWRIGHT_AVAILABLE:
             self.log("✅ Playwright已安装，支持百度/抖音/今日头条", "success")
+            # 检查浏览器路径（exe环境）
+            if getattr(sys, 'frozen', False):
+                import os
+                local_playwright_path = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'ms-playwright')
+                if os.path.exists(local_playwright_path):
+                    self.log(f"✅ Playwright浏览器路径: {local_playwright_path}", "info")
+                else:
+                    self.log(f"⚠️ 未找到Playwright浏览器，懂车帝等平台可能无法使用", "warning")
         else:
             self.log("⚠️ Playwright未安装，部分功能受限", "warning")
     
