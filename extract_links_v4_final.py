@@ -1045,6 +1045,7 @@ def extract_dongchedi_info(url):
             # 启动浏览器
             browser = None
             try:
+                dcd_debug_log(f"[DEBUG-DCD] 尝试启动Chromium浏览器...")
                 browser = p.chromium.launch(
                     headless=True,
                     args=[
@@ -1053,11 +1054,14 @@ def extract_dongchedi_info(url):
                         '--no-sandbox'
                     ]
                 )
-            except:
+                dcd_debug_log(f"[DEBUG-DCD] ✓ 浏览器启动成功")
+            except Exception as e:
+                error_msg = str(e)
+                dcd_debug_log(f"[DEBUG-DCD] ✗ 浏览器启动失败: {error_msg[:100]}")
                 return {
                     'title': '浏览器启动失败',
                     'author': '未找到',
-                    'status': 'failed: Browser launch error'
+                    'status': f'failed: {error_msg[:50]}'
                 }
             
             context = browser.new_context(
