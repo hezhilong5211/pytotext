@@ -1104,6 +1104,17 @@ def extract_dongchedi_info(url):
             
             dcd_debug_log(f"[DEBUG-DCD] HTML内容长度: {len(html_content)} 字符")
             
+            # 保存HTML内容到文件用于调试（仅保存第一个）
+            try:
+                import os
+                debug_file = 'dongchedi_page.html'
+                if not os.path.exists(debug_file):
+                    with open(debug_file, 'w', encoding='utf-8') as f:
+                        f.write(html_content)
+                    dcd_debug_log(f"[DEBUG-DCD] HTML已保存到: {debug_file}")
+            except Exception as e:
+                dcd_debug_log(f"[DEBUG-DCD] 保存HTML失败: {str(e)}")
+            
             if not html_content or len(html_content) < 500:
                 dcd_debug_log(f"[DEBUG-DCD] 错误: 页面内容太短")
                 return {
