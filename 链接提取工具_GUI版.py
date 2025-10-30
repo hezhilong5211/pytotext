@@ -18,6 +18,7 @@ from extract_links_v4_final import (
     get_website_name,
     extract_title_and_author,
     extract_with_playwright_browser,
+    extract_platform_info,  # 导入平台特定提取函数
     is_baidu_or_douyin,
     PLAYWRIGHT_AVAILABLE,
     set_gui_log_function  # 导入GUI日志函数设置器
@@ -506,7 +507,8 @@ class LinkExtractorGUI:
                     
                     self.log(f"[{delayed_idx}/{len(delayed_links)}] {website_name} | {url_short}...", "info")
                     
-                    info = extract_with_playwright_browser(link_info['url'])
+                    # 使用平台特定函数（会自动路由到懂车帝、抖音等专用函数）
+                    info = extract_platform_info(link_info['url'])
                     
                     if 'success' in info['status']:
                         self.log(f"  ✅ 成功 (Playwright)", "success")
