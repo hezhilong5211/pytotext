@@ -818,6 +818,22 @@ def extract_autohome_info(url):
             if meta_author:
                 author = meta_author.get('content', '').strip()
         
+        # 清理标题后缀
+        if title:
+            # 去掉汽车之家常见后缀
+            suffixes_to_remove = [
+                '_车家号_发现车生活_汽车之家',
+                '_车家号_汽车之家',
+                '-汽车之家',
+                '_汽车之家',
+                ' - 汽车之家',
+                '_论坛_汽车之家',
+            ]
+            for suffix in suffixes_to_remove:
+                if suffix in title:
+                    title = title.split(suffix)[0].strip()
+                    break
+        
         return {
             'title': title if title else '未找到标题',
             'author': author if author else '未找到作者',
