@@ -1007,7 +1007,7 @@ def extract_maiche_info(url):
         }
 
 def extract_dongchedi_info(url):
-    """懂车帝平台提取 - Playwright版（懂车帝需JS渲染）+ requests降级"""
+    """懂车帝平台提取 - Playwright版（懂车帝需JS渲染）+ requests降级 + 调试日志"""
     # 懂车帝页面是JS渲染的，直接使用Playwright
     if not PLAYWRIGHT_AVAILABLE:
         return {
@@ -1016,6 +1016,7 @@ def extract_dongchedi_info(url):
             'status': 'failed: 懂车帝需要Playwright'
         }
     
+    print(f"\n[DEBUG-DCD] 开始提取懂车帝: {url[:80]}...", flush=True)
     playwright_result = None
     
     try:
@@ -1053,42 +1054,30 @@ def extract_dongchedi_info(url):
             
             # 访问页面
             try:
-                page.goto(url, wait_until='networkidle', timeout=35000)
-                time.sleep(3)
+                page.goto(url, wait_until='networkidle', timeout=30000)
+                time.sleep(5)  # 增加等待时间，确保JS完全渲染
             except:
                 try:
-                    page.goto(url, wait_until='domcontentloaded', timeout=25000)
-                    time.sleep(3)
+                    page.goto(url, wait_until='domcontentloaded', timeout=20000)
+                    time.sleep(5)  # 增加等待时间
                 except:
-                    time.sleep(2)
+                    time.sleep(3)
             
-            # 滚动页面触发懒加载（作者信息可能需要滚动才加载）
+            # 额外等待确保作者信息加载完成
             try:
-                page.evaluate('window.scrollTo(0, 500)')
-                time.sleep(1)
-                page.evaluate('window.scrollTo(0, 0)')
-                time.sleep(1)
+                # 等待可能包含作者信息的元素
+                page.wait_for_timeout(2000)  # 再等2秒
             except:
                 pass
-            
-            # 额外等待确保作者信息加载完成（Windows环境需要更长时间）
-            try:
-                page.wait_for_timeout(3000)  # 等3秒
-            except:
-                pass
-            
-            # 尝试等待作者相关元素（如果存在）
-            try:
-                # 等待可能的作者容器
-                page.wait_for_selector('[class*="author"], [class*="user"]', timeout=5000)
-            except:
-                pass  # 超时不影响继续
             
             # 获取页面内容
             html_content = page.content()
             browser.close()
             
+            print(f"[DEBUG-DCD] HTML内容长度: {len(html_content)} 字符", flush=True)
+            
             if not html_content or len(html_content) < 500:
+                print(f"[DEBUG-DCD] 错误: 页面内容太短", flush=True)
                 return {
                     'title': '页面加载失败',
                     'author': '未找到',
@@ -1125,79 +1114,66 @@ def extract_dongchedi_info(url):
                     title = meta_title.get('content', '').strip()
             
             # 提取作者
-            # 方法1: 从JSON数据提取（更宽松的模式匹配）
+            # 方法1: 从JSON数据提取（扩展更多模式）
+            print(f"[DEBUG-DCD] 开始提取作者（方法1: JSON数据）", flush=True)
             json_patterns = [
-                # 精确模式
+                r'"author"\s*:\s*{\s*[^}]*"name"\s*:\s*"([^"]+)"',
                 r'"author_name"\s*:\s*"([^"]{2,30})"',
-                r'"author"\s*:\s*{\s*[^}]{0,200}"name"\s*:\s*"([^"]{2,30})"',
                 r'"user_name"\s*:\s*"([^"]{2,30})"',
                 r'"userName"\s*:\s*"([^"]{2,30})"',
-                # 宽松模式（允许更多字符）
-                r'"author"\s*:\s*\{[^}]{0,500}?"name"\s*:\s*"([^"]{2,50})"',
-                r'"user"\s*:\s*\{[^}]{0,500}?"name"\s*:\s*"([^"]{2,50})"',
-                # 简化模式
-                r'author[^:]*:\s*[^{]*{\s*[^}]*name[^:]*:\s*"([^"]{2,30})"',
-                # 其他字段
                 r'"nickname"\s*:\s*"([^"]{2,30})"',
                 r'"screen_name"\s*:\s*"([^"]{2,30})"',
-                r'"media_name"\s*:\s*"([^"]{2,30})"',
                 r'"source"\s*:\s*"([^"]{2,30})"',
-                r'"creator"\s*:\s*"([^"]{2,30})"',
-                r'"publisher"\s*:\s*"([^"]{2,30})"',
-                # 最宽松的name（放最后，容易误匹配）
-                r'"name"\s*:\s*"([^"]{2,30})"',
+                r'"media_name"\s*:\s*"([^"]{2,30})"',
+                r'"name"\s*:\s*"([^"]{2,30})"',  # 通用name字段
+                r'"creator"\s*:\s*"([^"]{2,30})"',  # 创建者
+                r'"publisher"\s*:\s*"([^"]{2,30})"',  # 发布者
             ]
             
-            for pattern in json_patterns:
+            for i, pattern in enumerate(json_patterns):
                 matches = re.findall(pattern, html_content)
                 if matches:
+                    print(f"[DEBUG-DCD] 模式{i+1}找到{len(matches)}个匹配: {matches[:3]}", flush=True)
                     # 尝试所有匹配，找到第一个有效的作者
                     for potential_author in matches:
+                        print(f"[DEBUG-DCD] 检查候选作者: '{potential_author}'", flush=True)
                         if (potential_author not in ['懂车帝', 'dongchedi', '今日头条', 'toutiao', 'bytedance', 
                                                      '抖音', 'douyin', '字节跳动', '头条', 'article'] and 
                             len(potential_author) > 1 and
                             not potential_author.startswith('http') and
                             not potential_author.isdigit()):  # 排除纯数字
                             author = potential_author
+                            print(f"[DEBUG-DCD] ✓ 找到有效作者: '{author}'", flush=True)
                             try:
                                 if '\\u' in author:
                                     author = author.encode().decode('unicode_escape')
                             except:
                                 pass
                             break
+                        else:
+                            print(f"[DEBUG-DCD] ✗ 候选作者被过滤", flush=True)
                     if author:
                         break
             
-            # 方法2: 从HTML元素提取（扩展选择器）
+            # 方法2: 从HTML元素提取
             if not author:
-                # 使用CSS选择器查找
-                author_css_patterns = [
-                    '[class*="author"]',
-                    '[class*="writer"]',
-                    '[class*="user-name"]',
-                    '[class*="username"]',
-                    '[class*="creator"]',
-                    '[class*="source"]',
-                    '[data-author]',
-                    '[data-user-name]',
+                print(f"[DEBUG-DCD] 方法1失败，尝试方法2: HTML元素提取", flush=True)
+                author_selectors = [
+                    {'class': re.compile('author|writer|creator', re.I)},
+                    {'class': re.compile('source|publisher', re.I)},
+                    {'class': re.compile('user|username', re.I)},
                 ]
-                
-                for pattern in author_css_patterns:
-                    try:
-                        elements = soup.select(pattern)
-                        for elem in elements[:5]:  # 最多查看前5个
-                            text = elem.get_text().strip()
-                            # 清理文本（移除空格、换行）
-                            text = ' '.join(text.split())
-                            if text and 2 <= len(text) <= 30:
-                                # 排除平台名和无效文本
-                                if text not in ['懂车帝', 'dongchedi', '今日头条', '关注', '已关注', '查看更多']:
-                                    author = text
-                                    break
-                        if author:
+                for i, selector in enumerate(author_selectors):
+                    elem = soup.find('span', selector) or soup.find('a', selector) or soup.find('div', selector)
+                    if elem:
+                        text = elem.get_text().strip()
+                        print(f"[DEBUG-DCD] HTML选择器{i+1}找到元素: '{text[:50]}'", flush=True)
+                        if text and 2 <= len(text) <= 30 and text not in ['懂车帝', '']:
+                            author = text
+                            print(f"[DEBUG-DCD] ✓ HTML元素提取成功: '{author}'", flush=True)
                             break
-                    except:
-                        continue
+            else:
+                print(f"[DEBUG-DCD] 方法1成功提取作者", flush=True)
             
             # 方法3: meta标签
             if not author:
@@ -1213,9 +1189,16 @@ def extract_dongchedi_info(url):
                 'status': 'success (Playwright)' if (title and author) else 'partial (Playwright)'
             }
             
+            print(f"[DEBUG-DCD] 提取结果:", flush=True)
+            print(f"[DEBUG-DCD]   标题: {playwright_result['title'][:50]}", flush=True)
+            print(f"[DEBUG-DCD]   作者: {playwright_result['author']}", flush=True)
+            print(f"[DEBUG-DCD]   状态: {playwright_result['status']}", flush=True)
+            
             # 如果Playwright成功获取了作者，直接返回
             if author:
                 return playwright_result
+            else:
+                print(f"[DEBUG-DCD] Playwright未能获取作者，准备降级到requests", flush=True)
             
     except Exception as e:
         playwright_result = {
