@@ -29,15 +29,20 @@ jobs:
     - name: 安装Playwright浏览器
       run: |
         python -m playwright install chromium
-        echo "Playwright浏览器路径:"
-        dir "%USERPROFILE%\AppData\Local\ms-playwright" /s /b | findstr chromium
+      shell: cmd
+    
+    - name: 查看Playwright浏览器路径
+      run: |
+        Get-ChildItem "$env:USERPROFILE\AppData\Local\ms-playwright" -Recurse | Where-Object {$_.Name -like "*chromium*"} | Select-Object FullName
+      shell: powershell
     
     - name: 打包EXE（包含浏览器）
       run: |
         echo "开始打包，将包含Playwright Chromium浏览器"
         pyinstaller build_exe.spec --clean
-        echo "打包完成，查看dist目录大小"
-        dir dist
+        echo "打包完成，查看dist目录"
+        Get-ChildItem dist -Recurse | Select-Object Name, Length
+      shell: powershell
     
     - name: 上传EXE文件
       uses: actions/upload-artifact@v4
