@@ -19,6 +19,17 @@ import time
 import re
 import json
 import html as html_module
+import os
+import sys
+
+# 设置Playwright浏览器路径（用于打包后的exe）
+if getattr(sys, 'frozen', False):
+    # 如果是打包后的exe
+    base_path = sys._MEIPASS
+    playwright_browser_path = os.path.join(base_path, 'playwright_browsers')
+    if os.path.exists(playwright_browser_path):
+        os.environ['PLAYWRIGHT_BROWSERS_PATH'] = playwright_browser_path
+        print(f"✅ 使用打包的Playwright浏览器: {playwright_browser_path}")
 
 # 尝试导入Playwright（今日头条专用）
 try:

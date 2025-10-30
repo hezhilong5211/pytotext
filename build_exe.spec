@@ -6,11 +6,37 @@ PyInstaller 打包配置文件
 
 block_cipher = None
 
+import os
+import glob
+
+# 查找Playwright浏览器路径
+playwright_browsers = []
+possible_paths = [
+    os.path.expanduser('~/.cache/ms-playwright'),  # Linux/Mac
+    os.path.expanduser('~/AppData/Local/ms-playwright'),  # Windows
+    os.path.expanduser('~/Library/Caches/ms-playwright'),  # Mac alternative
+]
+
+for base_path in possible_paths:
+    if os.path.exists(base_path):
+        chromium_dirs = glob.glob(os.path.join(base_path, 'chromium-*'))
+        if chromium_dirs:
+            # 找到最新版本的chromium
+            chromium_path = sorted(chromium_dirs)[-1]
+            playwright_browsers.append((chromium_path, 'playwright_browsers/chromium'))
+            print(f"✅ 找到Playwright Chromium: {chromium_path}")
+            break
+
+if not playwright_browsers:
+    print("⚠️ 警告: 未找到Playwright浏览器，打包后需要手动安装")
+
 a = Analysis(
     ['链接提取工具_GUI版.py'],
     pathex=[],
     binaries=[],
     datas=[
+        # 包含Playwright浏览器
+        *playwright_browsers,
         # 如果需要包含其他数据文件，在这里添加
         # ('README.md', '.'),
     ],
