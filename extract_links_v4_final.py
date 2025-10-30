@@ -438,27 +438,42 @@ def extract_weixin_info(url):
 def extract_xiaohongshu_info(url):
     """小红书提取 - 增强版（支持explore链接）"""
     try:
-        # 检测是否是explore链接（需要特殊处理）
-        is_explore = '/explore/' in url.lower()
+        # 提取笔记ID（支持explore和discovery两种格式）
+        note_id = None
+        if '/explore/' in url:
+            note_id_match = re.search(r'/explore/([0-9a-f]+)', url)
+            if note_id_match:
+                note_id = note_id_match.group(1)
+        elif '/discovery/item/' in url:
+            note_id_match = re.search(r'/discovery/item/([0-9a-f]+)', url)
+            if note_id_match:
+                note_id = note_id_match.group(1)
         
-        # 对于explore链接，使用更完整的移动端headers
-        if is_explore:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.38(0x1800262c) NetType/WIFI Language/zh_CN',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'zh-CN,zh;q=0.9',
-                'Referer': 'https://www.xiaohongshu.com/',
-            }
-        else:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15',
-            }
+        # 如果URL包含微信/APP分享参数，移除所有参数，只保留基础URL
+        if note_id and ('xhsshare=' in url or 'share_from_user_hidden=' in url or 'app_platform=' in url):
+            # 保持原格式（explore或discovery），只移除参数
+            if '/explore/' in url:
+                url = f'https://www.xiaohongshu.com/explore/{note_id}'
+            else:
+                url = f'https://www.xiaohongshu.com/discovery/item/{note_id}'
+        
+        # 使用PC端User-Agent，避免被识别为微信/APP环境
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate',
+            'Referer': 'https://www.xiaohongshu.com/',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+        }
         
         response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
         response.encoding = 'utf-8'
         
-        # 检查是否被重定向到错误页面
-        if 'website-login/error' in response.url or 'error_code' in response.url:
+        # 检查是否被重定向到错误页面（包括404）
+        if 'website-login/error' in response.url or 'error_code' in response.url or '/404' in response.url:
             return {
                 'title': '访问受限',
                 'author': '访问受限',
