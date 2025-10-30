@@ -26,7 +26,7 @@ else:
         os.path.expanduser('~/Library/Caches/ms-playwright'),
     ]
 
-print("🔍 搜索Playwright浏览器...")
+print("Searching for Playwright browsers...")
 for base_path in possible_paths:
     # 展开通配符路径
     if '*' in base_path:
@@ -36,14 +36,18 @@ for base_path in possible_paths:
     
     for expanded_path in expanded_paths:
         if os.path.exists(expanded_path):
-            print(f"  检查路径: {expanded_path}")
+            print(f"  Checking path: {expanded_path}")
             chromium_dirs = glob.glob(os.path.join(expanded_path, 'chromium-*'))
             if chromium_dirs:
                 # 找到最新版本的chromium
                 chromium_path = sorted(chromium_dirs)[-1]
                 playwright_browsers.append((chromium_path, 'playwright_browsers/chromium'))
-                print(f"✅ 找到Playwright Chromium: {chromium_path}")
-                print(f"   大小: {sum(os.path.getsize(os.path.join(dirpath, filename)) for dirpath, dirnames, filenames in os.walk(chromium_path) for filename in filenames) / 1024 / 1024:.1f} MB")
+                print(f"[OK] Found Playwright Chromium: {chromium_path}")
+                try:
+                    size_mb = sum(os.path.getsize(os.path.join(dirpath, filename)) for dirpath, dirnames, filenames in os.walk(chromium_path) for filename in filenames) / 1024 / 1024
+                    print(f"     Size: {size_mb:.1f} MB")
+                except:
+                    print("     Size: (unable to calculate)")
                 break
         if playwright_browsers:
             break
@@ -51,10 +55,10 @@ for base_path in possible_paths:
         break
 
 if not playwright_browsers:
-    print("⚠️ 警告: 未找到Playwright浏览器")
-    print("   将生成不含浏览器的exe，使用时需要手动安装")
+    print("[WARNING] Playwright browser not found")
+    print("          The generated exe will require manual browser installation")
 else:
-    print(f"📦 将打包 {len(playwright_browsers)} 个浏览器组件")
+    print(f"[INFO] Will package {len(playwright_browsers)} browser component(s)")
 
 a = Analysis(
     ['链接提取工具_GUI版.py'],
