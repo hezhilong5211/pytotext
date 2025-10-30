@@ -42,6 +42,19 @@ except ImportError:
 # 创建全局Session
 session = requests.Session()
 
+# 懂车帝调试日志函数
+def dcd_debug_log(message):
+    """懂车帝调试日志：同时输出到控制台和文件"""
+    timestamp = time.strftime("%H:%M:%S")
+    log_message = f"[{timestamp}] {message}"
+    print(log_message, flush=True)
+    
+    try:
+        with open('dongchedi_debug.log', 'a', encoding='utf-8') as f:
+            f.write(log_message + '\n')
+    except:
+        pass
+
 def read_excel_with_links(file_path):
     """读取Excel文件并提取所有链接"""
     wb = openpyxl.load_workbook(file_path)
@@ -1016,7 +1029,7 @@ def extract_dongchedi_info(url):
             'status': 'failed: 懂车帝需要Playwright'
         }
     
-    print(f"\n[DEBUG-DCD] 开始提取懂车帝: {url[:80]}...", flush=True)
+    dcd_debug_log(f"[DEBUG-DCD] 开始提取懂车帝: {url[:80]}...")
     playwright_result = None
     
     try:
@@ -1074,10 +1087,10 @@ def extract_dongchedi_info(url):
             html_content = page.content()
             browser.close()
             
-            print(f"[DEBUG-DCD] HTML内容长度: {len(html_content)} 字符", flush=True)
+            dcd_debug_log(f"[DEBUG-DCD] HTML内容长度: {len(html_content)} 字符")
             
             if not html_content or len(html_content) < 500:
-                print(f"[DEBUG-DCD] 错误: 页面内容太短", flush=True)
+                dcd_debug_log(f"[DEBUG-DCD] 错误: 页面内容太短")
                 return {
                     'title': '页面加载失败',
                     'author': '未找到',
@@ -1115,7 +1128,7 @@ def extract_dongchedi_info(url):
             
             # 提取作者
             # 方法1: 从JSON数据提取（扩展更多模式）
-            print(f"[DEBUG-DCD] 开始提取作者（方法1: JSON数据）", flush=True)
+            dcd_debug_log(f"[DEBUG-DCD] 开始提取作者（方法1: JSON数据）")
             json_patterns = [
                 r'"author"\s*:\s*{\s*[^}]*"name"\s*:\s*"([^"]+)"',
                 r'"author_name"\s*:\s*"([^"]{2,30})"',
@@ -1133,17 +1146,17 @@ def extract_dongchedi_info(url):
             for i, pattern in enumerate(json_patterns):
                 matches = re.findall(pattern, html_content)
                 if matches:
-                    print(f"[DEBUG-DCD] 模式{i+1}找到{len(matches)}个匹配: {matches[:3]}", flush=True)
+                    dcd_debug_log(f"[DEBUG-DCD] 模式{i+1}找到{len(matches)}个匹配: {matches[:3]}")
                     # 尝试所有匹配，找到第一个有效的作者
                     for potential_author in matches:
-                        print(f"[DEBUG-DCD] 检查候选作者: '{potential_author}'", flush=True)
+                        dcd_debug_log(f"[DEBUG-DCD] 检查候选作者: '{potential_author}'")
                         if (potential_author not in ['懂车帝', 'dongchedi', '今日头条', 'toutiao', 'bytedance', 
                                                      '抖音', 'douyin', '字节跳动', '头条', 'article'] and 
                             len(potential_author) > 1 and
                             not potential_author.startswith('http') and
                             not potential_author.isdigit()):  # 排除纯数字
                             author = potential_author
-                            print(f"[DEBUG-DCD] ✓ 找到有效作者: '{author}'", flush=True)
+                            dcd_debug_log(f"[DEBUG-DCD] ✓ 找到有效作者: '{author}'")
                             try:
                                 if '\\u' in author:
                                     author = author.encode().decode('unicode_escape')
@@ -1151,13 +1164,13 @@ def extract_dongchedi_info(url):
                                 pass
                             break
                         else:
-                            print(f"[DEBUG-DCD] ✗ 候选作者被过滤", flush=True)
+                            dcd_debug_log(f"[DEBUG-DCD] ✗ 候选作者被过滤")
                     if author:
                         break
             
             # 方法2: 从HTML元素提取
             if not author:
-                print(f"[DEBUG-DCD] 方法1失败，尝试方法2: HTML元素提取", flush=True)
+                dcd_debug_log(f"[DEBUG-DCD] 方法1失败，尝试方法2: HTML元素提取")
                 author_selectors = [
                     {'class': re.compile('author|writer|creator', re.I)},
                     {'class': re.compile('source|publisher', re.I)},
@@ -1167,13 +1180,13 @@ def extract_dongchedi_info(url):
                     elem = soup.find('span', selector) or soup.find('a', selector) or soup.find('div', selector)
                     if elem:
                         text = elem.get_text().strip()
-                        print(f"[DEBUG-DCD] HTML选择器{i+1}找到元素: '{text[:50]}'", flush=True)
+                        dcd_debug_log(f"[DEBUG-DCD] HTML选择器{i+1}找到元素: '{text[:50]}'")
                         if text and 2 <= len(text) <= 30 and text not in ['懂车帝', '']:
                             author = text
-                            print(f"[DEBUG-DCD] ✓ HTML元素提取成功: '{author}'", flush=True)
+                            dcd_debug_log(f"[DEBUG-DCD] ✓ HTML元素提取成功: '{author}'")
                             break
             else:
-                print(f"[DEBUG-DCD] 方法1成功提取作者", flush=True)
+                dcd_debug_log(f"[DEBUG-DCD] 方法1成功提取作者")
             
             # 方法3: meta标签
             if not author:
@@ -1189,16 +1202,16 @@ def extract_dongchedi_info(url):
                 'status': 'success (Playwright)' if (title and author) else 'partial (Playwright)'
             }
             
-            print(f"[DEBUG-DCD] 提取结果:", flush=True)
-            print(f"[DEBUG-DCD]   标题: {playwright_result['title'][:50]}", flush=True)
-            print(f"[DEBUG-DCD]   作者: {playwright_result['author']}", flush=True)
-            print(f"[DEBUG-DCD]   状态: {playwright_result['status']}", flush=True)
+            dcd_debug_log(f"[DEBUG-DCD] 提取结果:")
+            dcd_debug_log(f"[DEBUG-DCD]   标题: {playwright_result['title'][:50]}")
+            dcd_debug_log(f"[DEBUG-DCD]   作者: {playwright_result['author']}")
+            dcd_debug_log(f"[DEBUG-DCD]   状态: {playwright_result['status']}")
             
             # 如果Playwright成功获取了作者，直接返回
             if author:
                 return playwright_result
             else:
-                print(f"[DEBUG-DCD] Playwright未能获取作者，准备降级到requests", flush=True)
+                dcd_debug_log(f"[DEBUG-DCD] Playwright未能获取作者，准备降级到requests")
             
     except Exception as e:
         playwright_result = {
