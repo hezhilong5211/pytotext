@@ -1837,7 +1837,7 @@ def extract_toutiao_playwright(url):
         }
 
 def is_baidu_or_douyin(url):
-    """检查是否是百度系、抖音或懂车帝链接（需要Playwright）"""
+    """检查是否是百度系、抖音、懂车帝、汽车之家车家号链接（需要Playwright）"""
     url_lower = url.lower()
     return ('baijiahao.baidu.com' in url_lower or 
             'mbd.baidu.com' in url_lower or 
@@ -1845,7 +1845,8 @@ def is_baidu_or_douyin(url):
             'iesdouyin.com' in url_lower or
             'zjbyte.cn' in url_lower or
             'dongchedi' in url_lower or
-            'dcd.' in url_lower)
+            'dcd.' in url_lower or
+            'chejiahao.autohome.com.cn' in url_lower)  # 汽车之家车家号需要登录
 
 def extract_platform_info(url):
     """识别平台并使用特定方法提取信息"""
@@ -2145,9 +2146,9 @@ def extract_title_and_author(url):
 
 def main():
     print("=" * 60)
-    print("链接标题和作者提取工具 v4.6 - 两阶段处理版")
+    print("链接标题和作者提取工具 v4.7 - 两阶段处理版")
     print("✅ 阶段1: 先处理普通链接（跳过需Playwright的平台）")
-    print("✅ 阶段2: 用Playwright批量处理百度/抖音/懂车帝")
+    print("✅ 阶段2: 用Playwright批量处理百度/抖音/懂车帝/汽车之家车家号")
     print("🔴 404错误整行标红 | 🟡 失败单元格标黄")
     print("=" * 60)
     
@@ -2178,7 +2179,7 @@ def main():
     
     # ========== 阶段1: 处理普通链接，跳过需Playwright的平台 ==========
     print("\n" + "=" * 60)
-    print("【阶段1】处理普通链接（百度/抖音/懂车帝将在阶段2处理）")
+    print("【阶段1】处理普通链接（百度/抖音/懂车帝/汽车之家车家号将在阶段2处理）")
     print("=" * 60 + "\n")
     
     for idx, link_info in enumerate(links, 1):
