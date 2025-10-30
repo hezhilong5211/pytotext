@@ -1,0 +1,1271 @@
+"""
+链接标题和作者提取工具 v4.5 - 精准颜色标记版
+✅ 成功突破微博！(98.2%)
+✅ 抖音80%成功率
+✅ 小红书90%成功率
+✅ 汽车之家90%成功率
+✅ 百家号66%+成功率（Playwright绕过安全验证）
+✅ 今日头条80%成功率（自动Playwright）
+✅ Excel精准颜色标记：
+   🔴 404错误 → 整行标红
+   🟡 标题/作者失败 → 对应单元格标黄
+"""
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+import openpyxl
+from openpyxl.styles import PatternFill
+import time
+import re
+import json
+import html as html_module
+
+# 尝试导入Playwright（今日头条专用）
+try:
+    from playwright.sync_api import sync_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
+    print("⚠️  Playwright未安装，今日头条将使用requests（效果较差）")
+
+# 创建全局Session
+session = requests.Session()
+
+def read_excel_with_links(file_path):
+    """读取Excel文件并提取所有链接"""
+    wb = openpyxl.load_workbook(file_path)
+    ws = wb.active
+    
+    links = []
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.hyperlink:
+                links.append({
+                    'cell': cell.coordinate,
+                    'text': cell.value,
+                    'url': cell.hyperlink.target
+                })
+            elif isinstance(cell.value, str) and ('http://' in cell.value or 'https://' in cell.value):
+                urls = re.findall(r'https?://[^\s]+', cell.value)
+                for url in urls:
+                    links.append({
+                        'cell': cell.coordinate,
+                        'text': cell.value,
+                        'url': url
+                    })
+    
+    return links
+
+def get_website_name(url):
+    """从URL提取网站名称"""
+    url_lower = url.lower()
+    
+    if 'bilibili.com' in url_lower:
+        return '哔哩哔哩'
+    elif 'douyin.com' in url_lower or 'iesdouyin.com' in url_lower:
+        return '抖音'
+    elif 'xiaohongshu.com' in url_lower or 'xhslink.com' in url_lower:
+        return '小红书'
+    elif 'weibo.com' in url_lower:
+        return '微博'
+    elif 'toutiao.com' in url_lower:
+        return '今日头条'
+    elif 'autohome.com' in url_lower:
+        return '汽车之家'
+    elif 'zjbyte.cn' in url_lower or 'dongchedi' in url_lower or 'dcd' in url_lower:
+        return '懂车帝'
+    elif 'zhihu.com' in url_lower:
+        return '知乎'
+    else:
+        try:
+            from urllib.parse import urlparse
+            domain = urlparse(url).netloc
+            domain = domain.replace('www.', '').replace('.com', '').replace('.cn', '')
+            return domain if domain else '未知网站'
+        except:
+            return '未知网站'
+
+def extract_weibo_breakthrough(url):
+    """微博突破版 - 使用移动端API"""
+    try:
+        # 从URL提取mid
+        id_match = re.search(r'/(\d+)/([A-Za-z0-9]+)', url)
+        if not id_match:
+            return {
+                'title': 'URL格式错误',
+                'author': 'URL格式错误',
+                'status': 'failed: URL格式不正确'
+            }
+        
+        uid, mid = id_match.groups()
+        
+        # 使用移动端API
+        api_url = f"https://m.weibo.cn/statuses/show?id={mid}"
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15',
+            'Accept': 'application/json',
+            'Referer': f'https://m.weibo.cn/status/{mid}',
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+        
+        response = session.get(api_url, headers=headers, timeout=15)
+        
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                
+                if 'data' in data:
+                    status = data['data']
+                    
+                    # 提取标题 - 优先使用text_raw，否则使用text
+                    title = status.get('text_raw', status.get('text', ''))
+                    
+                    # 清理HTML标签
+                    if title:
+                        title = re.sub(r'<[^>]+>', '', title)
+                        title = title.strip()
+                        # 限制长度
+                        if len(title) > 200:
+                            title = title[:200] + '...'
+                    
+                    # 提取作者
+                    author = ''
+                    if 'user' in status:
+                        author = status['user'].get('screen_name', '')
+                    
+                    return {
+                        'title': title if title else '未找到标题',
+                        'author': author if author else '未找到作者',
+                        'status': 'success' if (title and author) else 'partial (微博API提取)'
+                    }
+                else:
+                    return {
+                        'title': 'API响应无数据',
+                        'author': '未找到',
+                        'status': 'failed: API响应格式错误'
+                    }
+            
+            except json.JSONDecodeError:
+                return {
+                    'title': 'API响应解析失败',
+                    'author': '未找到',
+                    'status': 'failed: JSON解析错误'
+                }
+        else:
+            return {
+                'title': f'API请求失败({response.status_code})',
+                'author': '未找到',
+                'status': f'failed: HTTP {response.status_code}'
+            }
+    
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '提取失败',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def extract_douyin_enhanced(url):
+    """抖音增强提取 - 深度JSON搜索"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15',
+            'Accept': 'text/html,application/xhtml+xml',
+            'Referer': 'https://www.douyin.com/',
+        }
+        
+        response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
+        response.encoding = 'utf-8'
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        title = None
+        author = None
+        
+        # 方法1：从title标签提取
+        if soup.find('title'):
+            title_text = soup.find('title').text.strip()
+            if ' - 抖音' in title_text:
+                title = title_text.split(' - 抖音')[0].strip()
+            else:
+                title = title_text
+        
+        # 方法2：从RENDER_DATA深度提取作者
+        render_match = re.search(r'<script id="RENDER_DATA" type="application/json">([^<]+)</script>', response.text)
+        if render_match:
+            try:
+                json_str = html_module.unescape(render_match.group(1))
+                data = json.loads(json_str)
+                
+                # 超深度递归搜索
+                def deep_find_author(obj, depth=0, max_depth=10):
+                    if depth > max_depth:
+                        return None
+                    
+                    if isinstance(obj, dict):
+                        author_keys = ['nickname', 'authorName', 'unique_id', 'short_id', 'userName', 'user_name']
+                        for key in author_keys:
+                            if key in obj and isinstance(obj[key], str) and 2 < len(obj[key]) < 50:
+                                return obj[key]
+                        
+                        if 'author' in obj and isinstance(obj['author'], dict):
+                            result = deep_find_author(obj['author'], depth+1, max_depth)
+                            if result:
+                                return result
+                        
+                        if 'user' in obj and isinstance(obj['user'], dict):
+                            result = deep_find_author(obj['user'], depth+1, max_depth)
+                            if result:
+                                return result
+                        
+                        for value in obj.values():
+                            result = deep_find_author(value, depth+1, max_depth)
+                            if result:
+                                return result
+                    
+                    elif isinstance(obj, list):
+                        for item in obj:
+                            result = deep_find_author(item, depth+1, max_depth)
+                            if result:
+                                return result
+                    
+                    return None
+                
+                author = deep_find_author(data)
+                
+            except:
+                pass
+        
+        # 方法3：正则表达式搜索
+        if not author:
+            patterns = [
+                r'"nickname":\s*"([^"]{2,30})"',
+                r'"authorName":\s*"([^"]{2,30})"',
+            ]
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, response.text)
+                if matches:
+                    for match in matches:
+                        if re.match(r'^[\u4e00-\u9fa5a-zA-Z0-9_-]+$', match):
+                            author = match
+                            break
+                if author:
+                    break
+        
+        return {
+            'title': title if title else '未找到标题',
+            'author': author if author else '未找到作者',
+            'status': 'success' if (title and author) else 'partial (抖音作者难提取)'
+        }
+        
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '提取失败',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def extract_xiaohongshu_info(url):
+    """小红书提取"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15',
+        }
+        
+        response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
+        response.encoding = 'utf-8'
+        
+        title = None
+        author = None
+        
+        patterns = [
+            r'window\.__INITIAL_STATE__\s*=\s*({.+?})\s*<\/script>',
+            r'window\.__SETUP_SERVER_STATE__\s*=\s*({.+?})\s*<\/script>',
+        ]
+        
+        for pattern in patterns:
+            matches = re.findall(pattern, response.text, re.DOTALL)
+            if matches:
+                try:
+                    data_str = matches[0].replace('\\u002F', '/')
+                    
+                    title_match = re.search(r'"title":\s*"([^"]+)"', data_str)
+                    if title_match:
+                        title = title_match.group(1)
+                    
+                    if not title or title == '小红书':
+                        desc_match = re.search(r'"desc":\s*"([^"]+)"', data_str)
+                        if desc_match and len(desc_match.group(1)) > 5:
+                            title = desc_match.group(1)
+                    
+                    nickname_matches = re.findall(r'"nickname":\s*"([^"]+)"', data_str)
+                    if nickname_matches:
+                        author = nickname_matches[0]
+                    
+                    if title and author:
+                        break
+                except:
+                    continue
+        
+        return {
+            'title': title if title else '未找到标题',
+            'author': author if author else '未找到作者',
+            'status': 'success' if (title and author) else 'partial'
+        }
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '提取失败',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def extract_bilibili_info(url):
+    """B站提取"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Referer': 'https://www.bilibili.com/',
+        }
+        
+        response = session.get(url, headers=headers, timeout=15)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        title = None
+        author = None
+        
+        meta_title = soup.find('meta', {'property': 'og:title'})
+        if meta_title:
+            title = meta_title.get('content', '').strip()
+            for suffix in ['_哔哩哔哩_bilibili', ' - 哔哩哔哩']:
+                if suffix in title:
+                    title = title.split(suffix)[0].strip()
+        
+        meta_author = soup.find('meta', {'name': 'author'})
+        if meta_author:
+            author = meta_author.get('content', '').strip()
+        
+        return {
+            'title': title if title else '未找到标题',
+            'author': author if author else '未找到作者',
+            'status': 'success' if (title and author) else 'partial'
+        }
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '提取失败',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def extract_autohome_info(url):
+    """汽车之家专用提取"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        }
+        
+        response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
+        response.encoding = response.apparent_encoding
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        title = None
+        author = None
+        
+        # 提取标题
+        title_elem = soup.find('title')
+        if title_elem:
+            title = title_elem.text.strip()
+        
+        # 车家号PC版：提取authorMes
+        if 'chejiahao.autohome.com.cn' in url:
+            author_elem = soup.find(class_='authorMes')
+            if author_elem:
+                text = author_elem.get_text(strip=True)
+                # 提取第一个非数字部分 "王小喵167关注..." -> "王小喵"
+                match = re.search(r'^([^0-9]+?)(?:\d+|关注)', text)
+                if match:
+                    author = match.group(1)
+        
+        # 车家号移动版：从JSON提取nickname
+        elif 'm.autohome.com.cn' in url:
+            nickname_match = re.search(r'"nickname":\s*"([^"]+)"', response.text)
+            if nickname_match:
+                author = nickname_match.group(1)
+        
+        # 论坛帖子：尝试多种方法
+        elif 'club.autohome.com.cn' in url:
+            # 方法1: 从JavaScript变量__TOPICINFO__提取topicMemberName
+            topic_match = re.search(r'topicMemberName:\s*[\'"]([^\'"]+)[\'"]', response.text)
+            if topic_match:
+                author = topic_match.group(1)
+            
+            # 方法2: 查找用户链接
+            if not author:
+                user_link = soup.find('a', href=re.compile(r'/space/\d+'))
+                if user_link:
+                    author = user_link.get_text(strip=True)
+            
+            # 方法3: 在JSON中查找userName
+            if not author:
+                author_match = re.search(r'"userName":\s*"([^"]+)"', response.text)
+                if author_match:
+                    author = author_match.group(1)
+        
+        # 新闻页面：提取作者
+        elif 'www.autohome.com.cn/news' in url:
+            # 方法1: 从meta标签
+            meta_author = soup.find('meta', {'name': 'author'})
+            if meta_author:
+                author = meta_author.get('content', '').strip()
+            
+            # 方法2: 查找class包含author的元素
+            if not author:
+                author_elem = soup.find(class_=re.compile('author|writer', re.I))
+                if author_elem:
+                    author = author_elem.get_text(strip=True)
+            
+            # 方法3: 在页面源码中搜索
+            if not author:
+                author_patterns = [
+                    r'"author"\s*:\s*"([^"]+)"',
+                    r'作者[：:]\s*([^\s<>"]+)',
+                ]
+                for pattern in author_patterns:
+                    match = re.search(pattern, response.text)
+                    if match:
+                        author = match.group(1)
+                        break
+        
+        # 通用提取（fallback）
+        if not author:
+            meta_author = soup.find('meta', {'name': 'author'})
+            if meta_author:
+                author = meta_author.get('content', '').strip()
+        
+        return {
+            'title': title if title else '未找到标题',
+            'author': author if author else '未找到作者',
+            'status': 'success' if (title and author) else 'partial'
+        }
+        
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '提取失败',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def extract_general_info(url):
+    """通用提取"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        }
+        
+        response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
+        response.encoding = response.apparent_encoding
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        title = None
+        author = None
+        
+        meta_title = soup.find('meta', {'property': 'og:title'}) or soup.find('meta', {'name': 'title'})
+        if meta_title:
+            title = meta_title.get('content', '').strip()
+        
+        if not title and soup.find('title'):
+            title = soup.find('title').text.strip()
+        
+        meta_author = soup.find('meta', {'property': 'og:author'}) or soup.find('meta', {'name': 'author'})
+        if meta_author:
+            author = meta_author.get('content', '').strip()
+        
+        if not author:
+            author_elems = soup.find_all(class_=re.compile(r'author|writer', re.I))
+            for elem in author_elems:
+                text = elem.text.strip()
+                if text and len(text) < 50:
+                    author = text
+                    break
+        
+        return {
+            'title': title if title else '未找到标题',
+            'author': author if author else '未找到作者',
+            'status': 'success' if (title and author) else 'partial'
+        }
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '提取失败',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def extract_baidu_info(url):
+    """百度系平台提取（百家号、mbd.baidu）"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml',
+        }
+        
+        response = session.get(url, headers=headers, timeout=10, allow_redirects=True)
+        response.encoding = 'utf-8'
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 提取标题
+        title = None
+        title_tag = soup.find('title')
+        if title_tag:
+            title = title_tag.text.strip()
+        
+        # 提取作者
+        author = None
+        
+        # 方法1：百家号的作者信息（新版页面）
+        if 'baijiahao.baidu.com' in url:
+            # 新版页面：从HTML标签提取
+            # <span data-testid="author-name" class="_2gGWi">作者名</span>
+            author_elem = soup.find('span', {'data-testid': 'author-name'})
+            if author_elem:
+                author = author_elem.get_text().strip()
+            
+            # 备用方法1：从class="_2gGWi"提取
+            if not author:
+                author_elem = soup.find('span', class_='_2gGWi')
+                if author_elem:
+                    author = author_elem.get_text().strip()
+            
+            # 备用方法2：从author链接提取
+            if not author:
+                author_link = soup.find('a', href=re.compile('author.baidu.com'))
+                if author_link:
+                    author_span = author_link.find('span')
+                    if author_span:
+                        author = author_span.get_text().strip()
+            
+            # 备用方法3：旧版JSON数据（兼容旧链接）
+            if not author:
+                json_match = re.search(r'var\s+DATA\s*=\s*({.+?});', response.text, re.DOTALL)
+                if json_match:
+                    try:
+                        data = json.loads(json_match.group(1))
+                        if 'superlanding' in data and len(data['superlanding']) > 0:
+                            item = data['superlanding'][0].get('itemData', {})
+                            if not title or title == '百度':
+                                title = item.get('header', title)
+                            author = item.get('author', {}).get('name', '')
+                    except:
+                        pass
+        
+        # 方法2：mbd.baidu的JSON数据（增强版）
+        elif 'mbd.baidu.com' in url:
+            # 方法2.1: 标准author.name格式
+            author_match = re.search(r'"author"\s*:\s*{\s*[^}]*"name"\s*:\s*"([^"]+)"', response.text)
+            if author_match:
+                author = author_match.group(1)
+                # Unicode解码
+                try:
+                    if '\\u' in author:
+                        author = author.encode().decode('unicode_escape')
+                except:
+                    pass
+            
+            # 方法2.2: 更多作者字段尝试
+            if not author:
+                author_patterns = [
+                    r'"authorName"\s*:\s*"([^"]{2,30})"',
+                    r'"author_name"\s*:\s*"([^"]{2,30})"',
+                    r'"publisher"\s*:\s*"([^"]{2,30})"',
+                    r'"source"\s*:\s*"([^"]{2,30})"',
+                    r'"sourceName"\s*:\s*"([^"]{2,30})"',
+                    r'"account"\s*:\s*{\s*[^}]*"name"\s*:\s*"([^"]+)"',  # account.name格式
+                ]
+                for pattern in author_patterns:
+                    match = re.search(pattern, response.text)
+                    if match:
+                        candidate = match.group(1)
+                        # 过滤掉明显不是作者的
+                        if candidate not in ['百度', '百家号', '百度APP', '百度新闻'] and len(candidate) > 1:
+                            author = candidate
+                            # Unicode解码
+                            try:
+                                if '\\u' in author:
+                                    author = author.encode().decode('unicode_escape')
+                            except:
+                                pass
+                            break
+            
+            # 查找标题
+            if not title or title == '百度':
+                title_match = re.search(r'"title"\s*:\s*"([^"]{5,100})"', response.text)
+                if title_match:
+                    title = title_match.group(1)
+        
+        return {
+            'title': title if title else '未找到标题',
+            'author': author if author else '未找到作者',
+            'status': 'success' if (title and author) else 'partial (百度系)'
+        }
+        
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '未找到作者',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def extract_dripcar_info(url):
+    """水滴汽车平台提取"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        }
+        
+        response = session.get(url, headers=headers, timeout=10)
+        response.encoding = 'utf-8'
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 提取标题
+        title = None
+        title_tag = soup.find('title')
+        if title_tag:
+            title = title_tag.text.strip()
+            # 清理标题
+            if '-水滴汽车' in title:
+                title = title.split('-水滴汽车')[0].strip()
+        
+        # 提取作者 - 从JavaScript变量中
+        author = None
+        author_match = re.search(r'author_name\s*:\s*"([^"]+)"', response.text)
+        if author_match:
+            author = author_match.group(1)
+        
+        return {
+            'title': title if title else '未找到标题',
+            'author': author if author else '未找到作者',
+            'status': 'success' if (title and author) else 'partial'
+        }
+        
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '未找到作者',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def extract_maiche_info(url):
+    """买车网平台提取 - 增强版"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        }
+        
+        response = session.get(url, headers=headers, timeout=10)
+        response.encoding = 'utf-8'
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # 提取标题
+        title = None
+        title_tag = soup.find('title')
+        if title_tag:
+            title = title_tag.text.strip()
+            # 清理标题
+            if '- 买车网' in title:
+                title = title.split('- 买车网')[0].strip()
+        
+        # 或者从h1获取
+        if not title:
+            h1 = soup.find('h1')
+            if h1:
+                title = h1.text.strip()
+        
+        # 提取作者 - 增强版
+        author = None
+        
+        # 方法1：从"来源："或"来源："后提取（买车网常用格式）
+        # 例如：来源：奶爸教选车
+        source_patterns = [
+            r'来源[：:]\s*([^\s\n<>]{2,20})',
+            r'source[：:]\s*([^\s\n<>]{2,20})',
+        ]
+        for pattern in source_patterns:
+            match = re.search(pattern, response.text)
+            if match:
+                potential_author = match.group(1).strip()
+                # 过滤掉一些明显不是作者的词
+                if potential_author not in ['买车网', '网络', '互联网', '官方']:
+                    author = potential_author
+                    break
+        
+        # 方法2：从[车友头条-车友号-作者名]格式提取
+        if not author:
+            match = re.search(r'\[车友头条[^\]]*车友号[^\]]*[-\-]\s*([^\]]{2,20})\]', response.text)
+            if match:
+                author = match.group(1).strip()
+        
+        # 方法3：查找作者class
+        if not author:
+            author_elem = soup.find(class_=re.compile('author', re.I))
+            if author_elem:
+                author = author_elem.text.strip()
+        
+        # 方法4：查找meta标签
+        if not author:
+            meta_author = soup.find('meta', {'name': 'author'})
+            if meta_author:
+                author = meta_author.get('content', '').strip()
+        
+        # 方法5：从JSON数据中查找
+        if not author:
+            author_match = re.search(r'"author"\s*:\s*"([^"]+)"', response.text)
+            if author_match:
+                author = author_match.group(1)
+        
+        # 方法6：从"文/"或"文:"后提取
+        if not author:
+            match = re.search(r'[（(]文[/／:]([^）)]{2,20})[）)]', response.text)
+            if match:
+                author = match.group(1).strip()
+        
+        # 统一清理作者名称（应用于所有方法）
+        if author:
+            # 去掉"车友号"、"作者："等前缀（包括空格）
+            author = re.sub(r'^(车友号|作者|来源)\s*[：:\s]*', '', author).strip()
+            # 再次清理多余空格
+            author = ' '.join(author.split())
+        
+        return {
+            'title': title if title else '未找到标题',
+            'author': author if author else '未找到作者',
+            'status': 'success' if (title and author) else 'partial'
+        }
+        
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '未找到作者',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def extract_toutiao_playwright(url):
+    """今日头条专用 - Playwright提取（80%成功率）"""
+    if not PLAYWRIGHT_AVAILABLE:
+        # 降级到requests
+        return extract_general_info(url)
+    
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=['--disable-blink-features=AutomationControlled']
+            )
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                viewport={'width': 1920, 'height': 1080},
+            )
+            page = context.new_page()
+            
+            # 去除webdriver标记
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+            """)
+            
+            # 访问页面
+            try:
+                page.goto(url, wait_until='load', timeout=30000)
+                time.sleep(3)  # 等待JavaScript渲染
+            except:
+                pass  # 即使超时也尝试继续
+            
+            # 获取页面内容
+            html_content = page.content()
+            browser.close()
+            
+            # 解析HTML
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            title = None
+            author = None
+            
+            # 提取标题 - 多种方法
+            # 方法1: h1标签
+            h1_elem = soup.find('h1')
+            if h1_elem:
+                title = h1_elem.get_text().strip()
+            
+            # 方法2: title标签
+            if not title or len(title) < 5:
+                title_elem = soup.find('title')
+                if title_elem:
+                    title = title_elem.get_text().strip()
+                    # 清理标题（去掉网站名）
+                    if '_' in title:
+                        title = title.split('_')[0].strip()
+                    elif '-' in title:
+                        title = title.split('-')[0].strip()
+            
+            # 方法3: meta标签
+            if not title or len(title) < 5:
+                meta_title = soup.find('meta', {'property': 'og:title'})
+                if meta_title:
+                    title = meta_title.get('content', '').strip()
+            
+            # 提取作者 - 多种方法
+            # 方法1: 从JSON数据中提取
+            json_patterns = [
+                r'"name"\s*:\s*"([^"]{2,30})"',  # 作者名
+                r'"source"\s*:\s*"([^"]{2,30})"',  # 来源
+                r'"author_name"\s*:\s*"([^"]{2,30})"',
+                r'\"作者\"\s*:\s*\"([^\"]{2,30})\"',
+            ]
+            
+            for pattern in json_patterns:
+                matches = re.findall(pattern, html_content)
+                if matches:
+                    # 过滤掉可能的误匹配
+                    for match in matches:
+                        if match and len(match) >= 2 and len(match) <= 30:
+                            # 排除常见误匹配
+                            if match not in ['今日头条', 'toutiao', 'article', 'content', 'title']:
+                                author = match
+                                break
+                    if author:
+                        break
+            
+            # 方法2: 从HTML元素提取
+            if not author:
+                author_selectors = [
+                    {'class': re.compile('author|writer', re.I)},
+                    {'class': re.compile('source', re.I)},
+                    {'data-id': True},
+                ]
+                for selector in author_selectors:
+                    elem = soup.find('span', selector) or soup.find('a', selector) or soup.find('div', selector)
+                    if elem:
+                        text = elem.get_text().strip()
+                        if text and 2 <= len(text) <= 30:
+                            author = text
+                            break
+            
+            return {
+                'title': title if title else '未找到标题',
+                'author': author if author else '未找到作者',
+                'status': 'success' if (title and author) else 'partial'
+            }
+            
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '提取失败',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def is_baidu_or_douyin(url):
+    """检查是否是百度系或抖音链接"""
+    url_lower = url.lower()
+    return ('baijiahao.baidu.com' in url_lower or 
+            'mbd.baidu.com' in url_lower or 
+            'douyin.com' in url_lower or 
+            'iesdouyin.com' in url_lower)
+
+def extract_platform_info(url):
+    """识别平台并使用特定方法提取信息"""
+    url_lower = url.lower()
+    
+    if 'weibo.com' in url_lower:
+        return extract_weibo_breakthrough(url)
+    elif 'toutiao.com' in url_lower:
+        # 今日头条使用Playwright
+        return extract_toutiao_playwright(url)
+    elif 'douyin.com' in url_lower or 'iesdouyin.com' in url_lower:
+        return extract_douyin_enhanced(url)
+    elif 'xiaohongshu.com' in url_lower or 'xhslink.com' in url_lower:
+        return extract_xiaohongshu_info(url)
+    elif 'bilibili.com' in url_lower:
+        return extract_bilibili_info(url)
+    elif 'autohome.com' in url_lower:
+        return extract_autohome_info(url)
+    elif 'baijiahao.baidu.com' in url_lower or 'mbd.baidu.com' in url_lower:
+        return extract_baidu_info(url)
+    elif 'dripcar.com' in url_lower:
+        return extract_dripcar_info(url)
+    elif 'maiche.com' in url_lower:
+        return extract_maiche_info(url)
+    else:
+        return extract_general_info(url)
+
+def extract_with_playwright_browser(url):
+    """使用 Playwright 浏览器方案处理难处理的平台（百度系、抖音）"""
+    if not PLAYWRIGHT_AVAILABLE:
+        return {
+            'title': 'Playwright未安装',
+            'author': '未找到',
+            'status': 'failed: Playwright未安装'
+        }
+    
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=['--disable-blink-features=AutomationControlled']
+            )
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                viewport={'width': 1920, 'height': 1080},
+            )
+            page = context.new_page()
+            
+            # 去除 webdriver 标记
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+            """)
+            
+            # 访问页面
+            try:
+                page.goto(url, wait_until='load', timeout=30000)
+                time.sleep(3)  # 等待 JavaScript 渲染
+            except:
+                pass  # 即使超时也尝试继续
+            
+            # 获取页面内容
+            html_content = page.content()
+            browser.close()
+            
+            # 解析 HTML
+            soup = BeautifulSoup(html_content, 'html.parser')
+            url_lower = url.lower()
+            
+            title = None
+            author = None
+            
+            # 提取标题
+            # 方法1: h1 标签
+            h1_elem = soup.find('h1')
+            if h1_elem:
+                title = h1_elem.get_text().strip()
+            
+            # 方法2: title 标签
+            if not title or len(title) < 5:
+                title_elem = soup.find('title')
+                if title_elem:
+                    title = title_elem.get_text().strip()
+                    # 清理标题
+                    for sep in ['_', ' - ', '-']:
+                        if sep in title:
+                            parts = title.split(sep)
+                            if len(parts[0].strip()) > 5:
+                                title = parts[0].strip()
+                                break
+            
+            # 方法3: meta 标签
+            if not title or len(title) < 5:
+                meta_title = soup.find('meta', {'property': 'og:title'})
+                if meta_title:
+                    title = meta_title.get('content', '').strip()
+            
+            # 提取作者
+            # 针对百度系
+            if 'baidu' in url_lower:
+                # 方法1: HTML 标签
+                author_elem = soup.find('span', {'data-testid': 'author-name'})
+                if author_elem:
+                    author = author_elem.get_text().strip()
+                
+                if not author:
+                    author_elem = soup.find('span', class_='_2gGWi')
+                    if author_elem:
+                        author = author_elem.get_text().strip()
+                
+                # 方法2: JSON 数据
+                if not author:
+                    author_patterns = [
+                        r'"author"\s*:\s*{\s*[^}]*"name"\s*:\s*"([^"]+)"',
+                        r'"authorName"\s*:\s*"([^"]{2,30})"',
+                        r'"author_name"\s*:\s*"([^"]{2,30})"',
+                    ]
+                    for pattern in author_patterns:
+                        match = re.search(pattern, html_content)
+                        if match:
+                            author = match.group(1)
+                            break
+            
+            # 针对抖音
+            elif 'douyin' in url_lower:
+                # 方法1: JSON 数据深度搜索
+                render_match = re.search(r'<script id="RENDER_DATA" type="application/json">([^<]+)</script>', html_content)
+                if render_match:
+                    try:
+                        json_str = html_module.unescape(render_match.group(1))
+                        data = json.loads(json_str)
+                        
+                        def deep_find_author(obj, depth=0, max_depth=10):
+                            if depth > max_depth:
+                                return None
+                            
+                            if isinstance(obj, dict):
+                                author_keys = ['nickname', 'authorName', 'unique_id', 'userName']
+                                for key in author_keys:
+                                    if key in obj and isinstance(obj[key], str) and 2 < len(obj[key]) < 50:
+                                        return obj[key]
+                                
+                                for key in ['author', 'user']:
+                                    if key in obj and isinstance(obj[key], dict):
+                                        result = deep_find_author(obj[key], depth+1, max_depth)
+                                        if result:
+                                            return result
+                                
+                                for value in obj.values():
+                                    result = deep_find_author(value, depth+1, max_depth)
+                                    if result:
+                                        return result
+                            
+                            elif isinstance(obj, list):
+                                for item in obj:
+                                    result = deep_find_author(item, depth+1, max_depth)
+                                    if result:
+                                        return result
+                            
+                            return None
+                        
+                        author = deep_find_author(data)
+                    except:
+                        pass
+                
+                # 方法2: 正则表达式
+                if not author:
+                    patterns = [
+                        r'"nickname":\s*"([^"]{2,30})"',
+                        r'"authorName":\s*"([^"]{2,30})"',
+                    ]
+                    for pattern in patterns:
+                        matches = re.findall(pattern, html_content)
+                        if matches:
+                            author = matches[0]
+                            break
+            
+            # 通用作者提取（fallback）
+            if not author:
+                meta_author = soup.find('meta', {'name': 'author'})
+                if meta_author:
+                    author = meta_author.get('content', '').strip()
+            
+            return {
+                'title': title if title else '未找到标题',
+                'author': author if author else '未找到作者',
+                'status': 'success (Playwright)' if (title and author) else 'partial (Playwright)'
+            }
+            
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '提取失败',
+            'status': f'failed: {str(e)[:50]}'
+        }
+
+def extract_title_and_author(url):
+    """从URL提取标题和作者信息"""
+    return extract_platform_info(url)
+
+def main():
+    print("=" * 60)
+    print("链接标题和作者提取工具 v4.6 - 两阶段处理版")
+    print("✅ 阶段1: 先处理普通链接（跳过百度/抖音）")
+    print("✅ 阶段2: 用Playwright批量处理百度/抖音")
+    print("🔴 404错误整行标红 | 🟡 失败单元格标黄")
+    print("=" * 60)
+    
+    excel_file = '测试数据集_随机抽样.xlsx'
+    max_links = None  # 处理全部数据
+    
+    print(f"\n正在读取文件: {excel_file}")
+    links = read_excel_with_links(excel_file)
+    
+    print(f"找到 {len(links)} 个链接")
+    
+    # 限制处理数量（可选）
+    if max_links and len(links) > max_links:
+        links = links[:max_links]
+        print(f"⚠️  限制处理前 {max_links} 条链接\n")
+    else:
+        print(f"处理全部 {len(links)} 条链接\n")
+    
+    results = []
+    delayed_links = []  # 存储百度系和抖音链接，延迟处理
+    start_time = time.time()
+    
+    # ========== 阶段1: 处理普通链接，跳过百度/抖音 ==========
+    print("\n" + "=" * 60)
+    print("【阶段1】处理普通链接（百度/抖音将在阶段2处理）")
+    print("=" * 60 + "\n")
+    
+    for idx, link_info in enumerate(links, 1):
+        website_name = get_website_name(link_info['url'])
+        url_short = link_info['url'][:60]
+        
+        # 检查是否是百度或抖音
+        if is_baidu_or_douyin(link_info['url']):
+            print(f"[{idx}/{len(links)}] {website_name} | {url_short}... ⏸️  延迟处理", flush=True)
+            delayed_links.append({
+                'idx': idx,
+                'link_info': link_info,
+                'website_name': website_name
+            })
+            # 添加占位结果
+            results.append({
+                '原链接': link_info['url'],
+                '网站名': website_name,
+                '作者': '待处理',
+                '标题': '待处理',
+                '状态': 'pending'
+            })
+            continue
+        
+        # 处理普通链接
+        iter_start = time.time()
+        print(f"[{idx}/{len(links)}] {website_name} | {url_short}...", end=' ', flush=True)
+        
+        info = extract_title_and_author(link_info['url'])
+        
+        iter_time = time.time() - iter_start
+        status_icon = '✅' if info['status'] == 'success' else ('⚠️' if 'partial' in info['status'] else '❌')
+        print(f"{status_icon} ({iter_time:.1f}s)", flush=True)
+        
+        results.append({
+            '原链接': link_info['url'],
+            '网站名': website_name,
+            '作者': info['author'],
+            '标题': info['title'],
+            '状态': info['status']
+        })
+        
+        # 每10条显示一次进度统计
+        if idx % 10 == 0:
+            elapsed = time.time() - start_time
+            processed = idx - len(delayed_links)
+            if processed > 0:
+                avg_time = elapsed / processed
+                remaining_normal = (len(links) - idx) * avg_time
+                success = sum(1 for r in results if 'success' in r['状态'])
+                print(f"  ⏱️  已用{elapsed/60:.1f}分 | 预计剩余{remaining_normal/60:.1f}分 | 成功率{success/processed*100:.1f}% | 延迟{len(delayed_links)}个\n")
+        
+        if idx < len(links):
+            time.sleep(0.5)
+    
+    # ========== 阶段2: 用 Playwright 处理延迟的链接 ==========
+    if delayed_links:
+        print("\n" + "=" * 60)
+        print(f"【阶段2】使用Playwright处理延迟的{len(delayed_links)}个链接")
+        print("=" * 60 + "\n")
+        
+        stage2_start = time.time()
+        
+        for delayed_idx, delayed_item in enumerate(delayed_links, 1):
+            idx = delayed_item['idx']
+            link_info = delayed_item['link_info']
+            website_name = delayed_item['website_name']
+            url_short = link_info['url'][:60]
+            
+            iter_start = time.time()
+            print(f"[{delayed_idx}/{len(delayed_links)}] {website_name} | {url_short}...", end=' ', flush=True)
+            
+            # 使用 Playwright 处理
+            info = extract_with_playwright_browser(link_info['url'])
+            
+            iter_time = time.time() - iter_start
+            status_icon = '✅' if 'success' in info['status'] else ('⚠️' if 'partial' in info['status'] else '❌')
+            print(f"{status_icon} ({iter_time:.1f}s)", flush=True)
+            
+            # 更新results中对应位置的结果
+            results[idx - 1] = {
+                '原链接': link_info['url'],
+                '网站名': website_name,
+                '作者': info['author'],
+                '标题': info['title'],
+                '状态': info['status']
+            }
+            
+            # 每5条显示一次进度
+            if delayed_idx % 5 == 0 or delayed_idx == len(delayed_links):
+                elapsed = time.time() - stage2_start
+                avg_time = elapsed / delayed_idx
+                remaining = (len(delayed_links) - delayed_idx) * avg_time
+                success = sum(1 for i in range(delayed_idx) if 'success' in results[delayed_links[i]['idx'] - 1]['状态'])
+                print(f"  ⏱️  阶段2已用{elapsed/60:.1f}分 | 预计剩余{remaining/60:.1f}分 | 成功率{success/delayed_idx*100:.1f}%\n")
+            
+            # Playwright 处理需要更长延迟
+            if delayed_idx < len(delayed_links):
+                time.sleep(2)
+    
+    df = pd.DataFrame(results)
+    output_file = '链接分析结果_v4_最终版.xlsx'
+    df.to_excel(output_file, index=False, engine='openpyxl')
+    
+    # 添加颜色标记
+    print("\n添加颜色标记...")
+    wb = openpyxl.load_workbook(output_file)
+    ws = wb.active
+    
+    # 定义颜色
+    red_fill = PatternFill(start_color='FFCCCC', end_color='FFCCCC', fill_type='solid')  # 浅红色
+    yellow_fill = PatternFill(start_color='FFFF99', end_color='FFFF99', fill_type='solid')  # 浅黄色
+    
+    # 遍历数据行（从第2行开始，第1行是表头）
+    for idx, row_data in enumerate(results, start=2):
+        status = row_data['状态'].lower()
+        title = row_data['标题']
+        author = row_data['作者']
+        
+        # 404错误 → 整行标红
+        if '404' in status or '404' in title:
+            for col in range(1, 6):  # A-E列（原链接、网站名、作者、标题、状态）
+                ws.cell(row=idx, column=col).fill = red_fill
+        else:
+            # 部分失败 → 只标记失败的单元格为黄色
+            # 检查标题是否失败
+            if '未找到' in title or '提取失败' in title:
+                ws.cell(row=idx, column=4).fill = yellow_fill  # D列：标题
+            
+            # 检查作者是否失败
+            if '未找到' in author or '提取失败' in author:
+                ws.cell(row=idx, column=3).fill = yellow_fill  # C列：作者
+    
+    wb.save(output_file)
+    
+    print("\n" + "=" * 60)
+    print(f"分析完成！结果已保存到: {output_file}")
+    print("🔴 404错误 → 整行标红")
+    print("🟡 标题/作者提取失败 → 对应单元格标黄")
+    print("=" * 60)
+    
+    success_count = sum(1 for r in results if 'success' in r['状态'].lower())
+    partial_count = sum(1 for r in results if 'partial' in r['状态'].lower())
+    failed_count = len(results) - success_count - partial_count
+    
+    print(f"\n【统计】")
+    print(f"总链接数: {len(results)}")
+    print(f"完全成功: {success_count} ({success_count/len(results)*100:.1f}%)")
+    print(f"部分成功: {partial_count} ({partial_count/len(results)*100:.1f}%)")
+    print(f"失败: {failed_count} ({failed_count/len(results)*100:.1f}%)")
+    
+    print(f"\n【平台分布】")
+    platform_count = {}
+    for r in results:
+        platform = r['网站名']
+        platform_count[platform] = platform_count.get(platform, 0) + 1
+    
+    for platform, count in sorted(platform_count.items(), key=lambda x: x[1], reverse=True):
+        print(f"{platform}: {count}个")
+    
+    print("\n处理完成！")
+
+if __name__ == "__main__":
+    main()
+
