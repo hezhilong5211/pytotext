@@ -42,15 +42,30 @@ except ImportError:
 # 创建全局Session
 session = requests.Session()
 
-# 懂车帝调试日志函数
+# 懂车帝调试日志文件路径
+DCD_DEBUG_LOG_FILE = 'dongchedi_debug.log'
+_dcd_log_initialized = False
+
 def dcd_debug_log(message):
     """懂车帝调试日志：同时输出到控制台和文件"""
+    global _dcd_log_initialized
+    
+    # 首次调用时清空旧日志
+    if not _dcd_log_initialized:
+        try:
+            with open(DCD_DEBUG_LOG_FILE, 'w', encoding='utf-8') as f:
+                f.write(f"=== 懂车帝调试日志 - {time.strftime('%Y-%m-%d %H:%M:%S')} ===\n\n")
+            print(f"\n💾 懂车帝调试日志将保存到: {DCD_DEBUG_LOG_FILE}\n", flush=True)
+        except:
+            pass
+        _dcd_log_initialized = True
+    
     timestamp = time.strftime("%H:%M:%S")
     log_message = f"[{timestamp}] {message}"
     print(log_message, flush=True)
     
     try:
-        with open('dongchedi_debug.log', 'a', encoding='utf-8') as f:
+        with open(DCD_DEBUG_LOG_FILE, 'a', encoding='utf-8') as f:
             f.write(log_message + '\n')
     except:
         pass
