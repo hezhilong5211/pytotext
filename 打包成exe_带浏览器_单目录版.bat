@@ -1,60 +1,75 @@
 @echo off
-chcp 65001 >nul
-title 打包成exe（单目录版-更稳定）
+title Package to EXE (OneDir Version)
 
 echo ======================================================
-echo   打包成exe（单目录版-包含浏览器）
+echo   Package to EXE (OneDir - Include Browser)
 echo ======================================================
 echo.
-echo 单目录版优点：
-echo   - 打包更稳定，不会因为文件太大失败
-echo   - 浏览器文件不需要每次解压
-echo   - 启动更快
-echo.
-echo 缺点：
-echo   - 生成一个文件夹，而不是单个exe
-echo.
+echo Press any key to start...
 pause
 
 echo.
-echo [1/3] 检查本地浏览器...
+echo [1/4] Check Python...
 echo ------------------------------------------------------
-python -c "import os; p = os.path.expanduser('~/AppData/Local/ms-playwright'); print(f'浏览器路径: {p}'); print(f'存在: {os.path.exists(p)}')"
+python --version
+if %errorlevel% neq 0 (
+    echo ERROR: Python not found
+    pause
+    exit /b 1
+)
 echo.
 
-echo [2/3] 开始打包（单目录版）...
+echo [2/4] Check PyInstaller...
+echo ------------------------------------------------------
+pyinstaller --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo PyInstaller not found, installing...
+    pip install pyinstaller
+    if %errorlevel% neq 0 (
+        echo ERROR: Failed to install PyInstaller
+        pause
+        exit /b 1
+    )
+)
+pyinstaller --version
+echo.
+
+echo [3/4] Check local browser...
+echo ------------------------------------------------------
+if exist "%LOCALAPPDATA%\ms-playwright\chromium-*" (
+    echo OK: Browser found
+    dir "%LOCALAPPDATA%\ms-playwright" /b | findstr chromium
+) else (
+    echo WARNING: Browser not found
+    echo Please run: python -m playwright install chromium
+)
+echo.
+
+echo [4/4] Start packaging...
 echo ------------------------------------------------------
 pyinstaller build_exe_onedir.spec --clean --log-level INFO
 echo.
 
-echo [3/3] 检查打包结果...
-echo ------------------------------------------------------
+echo ======================================================
+echo Check result...
+echo ======================================================
 if exist "dist\链接提取工具" (
-    echo ✅ 打包成功！
-    echo.
-    echo 文件位置: dist\链接提取工具\
+    echo OK: Package successful
     echo.
     dir "dist\链接提取工具" /b
     echo.
-    echo 检查浏览器是否包含：
     if exist "dist\链接提取工具\playwright_browsers" (
-        echo ✅ 浏览器已包含！
-        dir "dist\链接提取工具\playwright_browsers" /b
+        echo OK: Browser included
     ) else (
-        echo ❌ 浏览器未包含
+        echo WARNING: Browser NOT included
     )
 ) else (
-    echo ❌ 打包失败
+    echo ERROR: Package failed
 )
 
 echo.
 echo ======================================================
-echo   打包完成
+echo   Done
 echo ======================================================
-echo.
-echo 使用方法：
-echo   1. 将整个 dist\链接提取工具 文件夹拷贝到目标电脑
-echo   2. 双击运行 链接提取工具.exe
-echo.
 pause
 
