@@ -26,9 +26,22 @@ import sys
 if getattr(sys, 'frozen', False):
     # 如果是打包后的exe，优先使用打包的浏览器
     base_path = sys._MEIPASS
-    packaged_browser_path = os.path.join(base_path, 'playwright_browsers')
     
-    if os.path.exists(packaged_browser_path):
+    # 尝试多个可能的浏览器路径
+    possible_browser_paths = [
+        os.path.join(base_path, 'playwright_browsers'),  # 单文件模式
+        os.path.join(base_path, '..', 'playwright_browsers'),  # 单目录模式（_internal的上一级）
+        os.path.join(os.path.dirname(sys.executable), 'playwright_browsers'),  # exe同级目录
+    ]
+    
+    packaged_browser_path = None
+    for path in possible_browser_paths:
+        abs_path = os.path.abspath(path)
+        if os.path.exists(abs_path):
+            packaged_browser_path = abs_path
+            break
+    
+    if packaged_browser_path:
         # 找到打包的浏览器
         os.environ['PLAYWRIGHT_BROWSERS_PATH'] = packaged_browser_path
         print(f"✅ 使用打包的Playwright浏览器: {packaged_browser_path}", flush=True)
@@ -41,6 +54,7 @@ if getattr(sys, 'frozen', False):
             print(f"⚠️ 未找到打包的浏览器，使用本地浏览器: {local_playwright_path}", flush=True)
         else:
             print(f"❌ 未找到Playwright浏览器！", flush=True)
+            print(f"   尝试的路径: {', '.join(possible_browser_paths)}", flush=True)
             print(f"   请运行: 一键安装Chromium浏览器.bat", flush=True)
             print(f"   或手动运行: python -m playwright install chromium", flush=True)
 

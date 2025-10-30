@@ -313,9 +313,22 @@ class LinkExtractorGUI:
             if getattr(sys, 'frozen', False):
                 import os
                 base_path = sys._MEIPASS
-                packaged_browser_path = os.path.join(base_path, 'playwright_browsers')
                 
-                if os.path.exists(packaged_browser_path):
+                # 尝试多个可能的浏览器路径
+                possible_paths = [
+                    os.path.join(base_path, 'playwright_browsers'),
+                    os.path.join(base_path, '..', 'playwright_browsers'),
+                    os.path.join(os.path.dirname(sys.executable), 'playwright_browsers'),
+                ]
+                
+                found_browser = None
+                for path in possible_paths:
+                    abs_path = os.path.abspath(path)
+                    if os.path.exists(abs_path):
+                        found_browser = abs_path
+                        break
+                
+                if found_browser:
                     self.log(f"✅ 使用打包的浏览器（无需额外安装）", "success")
                 else:
                     local_playwright_path = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'ms-playwright')
