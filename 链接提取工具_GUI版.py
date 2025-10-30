@@ -312,11 +312,17 @@ class LinkExtractorGUI:
             # 检查浏览器路径（exe环境）
             if getattr(sys, 'frozen', False):
                 import os
-                local_playwright_path = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'ms-playwright')
-                if os.path.exists(local_playwright_path):
-                    self.log(f"✅ Playwright浏览器路径: {local_playwright_path}", "info")
+                base_path = sys._MEIPASS
+                packaged_browser_path = os.path.join(base_path, 'playwright_browsers')
+                
+                if os.path.exists(packaged_browser_path):
+                    self.log(f"✅ 使用打包的浏览器（无需额外安装）", "success")
                 else:
-                    self.log(f"⚠️ 未找到Playwright浏览器，懂车帝等平台可能无法使用", "warning")
+                    local_playwright_path = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'ms-playwright')
+                    if os.path.exists(local_playwright_path):
+                        self.log(f"⚠️ 使用本地浏览器: {local_playwright_path}", "warning")
+                    else:
+                        self.log(f"❌ 未找到浏览器！请运行: 一键安装Chromium浏览器.bat", "error")
         else:
             self.log("⚠️ Playwright未安装，部分功能受限", "warning")
     
