@@ -39,17 +39,34 @@ jobs:
     - name: 打包EXE（包含浏览器）
       run: |
         echo "开始打包，将包含Playwright Chromium浏览器"
-        pyinstaller build_exe.spec --clean
-        echo "打包完成，查看dist目录"
-        Get-ChildItem dist -Recurse | Select-Object Name, Length
+        python -c "import os, glob; print('Chromium paths:'); [print(p) for p in glob.glob(os.path.expanduser('~/AppData/Local/ms-playwright/chromium-*'))]"
+        pyinstaller build_exe.spec --clean --log-level DEBUG
+      shell: cmd
+      continue-on-error: false
+    
+    - name: 检查打包结果
+      run: |
+        echo "=== 检查dist目录 ==="
+        if (Test-Path dist) {
+          Get-ChildItem dist -Recurse | Format-Table Name, Length -AutoSize
+        } else {
+          echo "错误: dist目录不存在！"
+        }
+        echo ""
+        echo "=== 检查当前目录所有文件 ==="
+        Get-ChildItem . -Recurse -File | Where-Object {$_.Extension -eq ".exe"} | Format-Table FullName, Length -AutoSize
       shell: powershell
     
     - name: 上传EXE文件
       uses: actions/upload-artifact@v4
+      if: success()
       with:
         name: 链接提取工具-Windows
-        path: dist/*.exe
+        path: |
+          dist/*.exe
+          dist/**/链接提取工具.exe
         retention-days: 30
+        if-no-files-found: warn
     
     - name: 创建Release（可选）
       if: startsWith(github.ref, 'refs/tags/')
