@@ -66,14 +66,39 @@ jobs:
         }
       shell: pwsh
     
-    - name: 检查打包结果
+    - name: 检查打包结果和浏览器
       run: |
         Write-Host "=== Checking dist directory ==="
-        if (Test-Path dist) { Get-ChildItem dist -Recurse | Select-Object Name, Length }
-        if (-not (Test-Path dist)) { Write-Host "ERROR: dist directory not found!" }
+        if (Test-Path dist) { 
+          Get-ChildItem dist -Recurse | Select-Object Name, Length 
+        } else {
+          Write-Host "ERROR: dist directory not found!"
+        }
+        
         Write-Host ""
         Write-Host "=== Searching for .exe files ==="
         Get-ChildItem . -Recurse -File -Filter "*.exe" -ErrorAction SilentlyContinue | Select-Object FullName, Length
+        
+        Write-Host ""
+        Write-Host "=== Checking if browser is packaged in single-file version ==="
+        if (Test-Path "dist\链接提取工具_单文件版_管理员权限.exe") {
+          $exeSize = (Get-Item "dist\链接提取工具_单文件版_管理员权限.exe").Length / 1MB
+          Write-Host "EXE size: $([math]::Round($exeSize, 2)) MB"
+          if ($exeSize -gt 100) {
+            Write-Host "[OK] Browser appears to be included (size > 100MB)"
+          } else {
+            Write-Host "[WARNING] Browser might NOT be included (size < 100MB)"
+          }
+        }
+        
+        Write-Host ""
+        Write-Host "=== Checking if browser is in single-directory version ==="
+        if (Test-Path "dist\链接提取工具\playwright_browsers") {
+          Write-Host "[OK] playwright_browsers folder found in single-directory version"
+          Get-ChildItem "dist\链接提取工具\playwright_browsers" -Recurse -Directory | Select-Object FullName
+        } else {
+          Write-Host "[WARNING] playwright_browsers folder NOT found"
+        }
       shell: pwsh
     
     - name: 上传两个版本
