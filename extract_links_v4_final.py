@@ -436,11 +436,13 @@ def extract_weixin_info(url):
         }
 
 def extract_xiaohongshu_info(url):
-    """小红书提取 - 增强版（支持explore链接）"""
+    """小红书提取 - 增强版（支持explore链接，explore链接使用Playwright）"""
     try:
         # 提取笔记ID（支持explore和discovery两种格式）
         note_id = None
-        if '/explore/' in url:
+        is_explore = '/explore/' in url
+        
+        if is_explore:
             note_id_match = re.search(r'/explore/([0-9a-f]+)', url)
             if note_id_match:
                 note_id = note_id_match.group(1)
@@ -452,33 +454,102 @@ def extract_xiaohongshu_info(url):
         # 如果URL包含微信/APP分享参数，移除所有参数，只保留基础URL
         if note_id and ('xhsshare=' in url or 'share_from_user_hidden=' in url or 'app_platform=' in url):
             # 保持原格式（explore或discovery），只移除参数
-            if '/explore/' in url:
+            if is_explore:
                 url = f'https://www.xiaohongshu.com/explore/{note_id}'
             else:
                 url = f'https://www.xiaohongshu.com/discovery/item/{note_id}'
         
-        # 使用PC端User-Agent，避免被识别为微信/APP环境
+        # explore链接需要使用Playwright（反爬虫严格）
+        if is_explore and PLAYWRIGHT_AVAILABLE:
+            try:
+                with sync_playwright() as p:
+                    browser = p.chromium.launch(headless=True)
+                    page = browser.new_page(
+                        user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    )
+                    page.goto(url, wait_until='networkidle', timeout=30000)
+                    time.sleep(3)  # 等待JS渲染
+                    
+                    html_content = page.content()
+                    browser.close()
+                    
+                    # 解析Playwright获取的HTML
+                    title = None
+                    author = None
+                    
+                    patterns = [
+                        r'window\.__INITIAL_STATE__\s*=\s*({.+?})\s*<\/script>',
+                        r'window\.__SETUP_SERVER_STATE__\s*=\s*({.+?})\s*<\/script>',
+                    ]
+                    
+                    for pattern in patterns:
+                        matches = re.findall(pattern, html_content, re.DOTALL)
+                        if matches:
+                            try:
+                                data_str = matches[0].replace('\\u002F', '/')
+                                
+                                # 提取desc和title
+                                desc_match = re.search(r'"desc"\s*:\s*"([^"]+)"', data_str)
+                                title_match = re.search(r'"title"\s*:\s*"([^"]+)"', data_str)
+                                
+                                desc_text = desc_match.group(1) if desc_match and len(desc_match.group(1)) > 5 else None
+                                title_text = title_match.group(1) if title_match and title_match.group(1) not in ['小红书', ''] and len(title_match.group(1)) > 5 else None
+                                
+                                # 智能选择标题
+                                if title_text:
+                                    title = title_text
+                                elif desc_text:
+                                    title = desc_text[:50]  # 使用desc前50字
+                                
+                                # 提取作者
+                                user_nickname_match = re.search(r'"user"\s*:\s*{[^}]{0,500}"nickName"\s*:\s*"([^"]{2,30})"', data_str)
+                                if user_nickname_match:
+                                    author = user_nickname_match.group(1)
+                                else:
+                                    nickname_matches = re.findall(r'"nickname"\s*:\s*"([^"]+)"', data_str)
+                                    if nickname_matches:
+                                        author = nickname_matches[0]
+                                
+                                if title and author:
+                                    break
+                            except:
+                                continue
+                    
+                    return {
+                        'title': title if title else '未找到标题',
+                        'author': author if author else '未找到作者',
+                        'status': 'success (Playwright)' if (title and author) else 'partial (Playwright)'
+                    }
+            except Exception as pw_error:
+                # Playwright失败，回退到requests
+                pass
+        
+        # 非explore链接，或Playwright失败时使用requests
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            'Accept-Encoding': 'gzip, deflate',
             'Referer': 'https://www.xiaohongshu.com/',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
         }
         
         response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
         response.encoding = 'utf-8'
         
-        # 检查是否被重定向到错误页面（包括404）
-        if 'website-login/error' in response.url or 'error_code' in response.url or '/404' in response.url:
-            return {
-                'title': '访问受限',
-                'author': '访问受限',
-                'status': 'failed: 小红书访问受限，建议使用xhslink.com短链接'
-            }
+        # 检查是否被重定向到错误页面（包括404、验证码）
+        if 'website-login' in response.url or 'captcha' in response.url or 'error_code' in response.url or '/404' in response.url:
+            # explore链接经常被反爬虫拦截
+            if is_explore:
+                return {
+                    'title': '验证码拦截',
+                    'author': '验证码拦截',
+                    'status': 'failed: 小红书explore链接需要验证码，请使用xhslink.com短链接'
+                }
+            else:
+                return {
+                    'title': '访问受限',
+                    'author': '访问受限',
+                    'status': 'failed: 小红书访问受限，建议使用xhslink.com短链接'
+                }
         
         title = None
         author = None
