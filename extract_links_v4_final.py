@@ -1990,11 +1990,14 @@ def extract_with_playwright_browser(url):
             # 访问页面（使用domcontentloaded更快且成功率更高）
             try:
                 page.goto(url, wait_until='domcontentloaded', timeout=20000)
-                time.sleep(3)  # 等待 JavaScript 渲染
+                # 增加随机等待时间，避免被识别为爬虫
+                import random
+                time.sleep(random.uniform(4, 7))  # 等待 4-7秒，模拟真人浏览
             except:
                 # 即使超时也尝试继续
                 try:
-                    time.sleep(2)
+                    import random
+                    time.sleep(random.uniform(3, 5))
                 except:
                     pass
             
@@ -2284,9 +2287,12 @@ def main():
                 success = sum(1 for i in range(delayed_idx) if 'success' in results[delayed_links[i]['idx'] - 1]['状态'])
                 print(f"  ⏱️  阶段2已用{elapsed/60:.1f}分 | 预计剩余{remaining/60:.1f}分 | 成功率{success/delayed_idx*100:.1f}%\n")
             
-            # Playwright 处理需要更长延迟
+            # Playwright 处理需要更长延迟，避免被反爬识别
+            # 使用随机延迟5-8秒，模拟真人浏览
             if delayed_idx < len(delayed_links):
-                time.sleep(2)
+                import random
+                delay = random.uniform(5, 8)
+                time.sleep(delay)
     
     df = pd.DataFrame(results)
     output_file = '链接分析结果_v4_最终版.xlsx'
