@@ -66,6 +66,11 @@ except ImportError:
     PLAYWRIGHT_AVAILABLE = False
     print("⚠️  Playwright未安装，今日头条将使用requests（效果较差）")
 
+# ========== 汽车之家Cookie配置 ==========
+# 如果您有汽车之家账号，可以在这里配置Cookie以提高车家号链接的成功率
+# 获取方法：登录汽车之家 → F12开发者工具 → Network → 复制Cookie
+AUTOHOME_COOKIE = 'fvlid=1761792285499pxCNZwFDEU; smidV2=202510302155301131d4f2e97e359051b2fb8c17ec368b00552589e37bc9f20; cookieCityId=110100; _hjSessionUser_6545983=eyJpZCI6ImE2M2U5NzkxLWNiYjAtNWIxMi05ZGFiLTY0MTgzNzFkODlmMiIsImNyZWF0ZWQiOjE3NjE4MzI2MTg4NTksImV4aXN0aW5nIjpmYWxzZX0=; _ac=RXrNlinC-4Rw4zsSFd0Yqyw-DiBrdrCL9hKt4T_k7xZic7dtTFnk; sessionuid=56c1ee51-c83d-4b64-8883-d0a5d339ad09; wxlightappsecuritykey=e0b0536abf5d4ae79469c198a6b26d2e; pcpopclub=6008394bb8134ea4a027e92a7ae0035d0d000509; clubUserShow=218105097|0|2|%e4%b9%8b%e5%ae%b6%e8%bd%a6%e5%8f%8b4582693|0|0|0|/g30/M00/CC/34/120X120_0_q87_autohomecar__ChxknGT-zr2AKPdZAACUcoAcBwQ419.png|2025-10-31 08:16:59|0; sessionlogin=6008394bb8134ea4a027e92a7ae0035d0d000509; autouserid=218105097; ahpvno=9; __ah_uuid_ng=u_218105097; ahrlid=1761869822053U5xZIMGbml-1761869824323; .thumbcache_16ba43f8aeefb62e85e0838b29118ea3=rvMw1JEgXqEEAzlUlOAiWRCT7PySODjEJJS9DtE1jLQXaewdtlV17swFhZrOuEAiwxw2B3BmsxgtE8GTjeKeBw%3D%3D; _as=fffmDLaFruqXqPBiJNSu9b-EsGoLNmg3DUvMKyE4bL09mDEjGwMW2g; acw_tc=0a1b054817618698264277139ea24b94974e0b469cf2babc0f32f45fcdaa98'
+
 # 创建全局Session并设置默认headers
 session = requests.Session()
 session.headers.update({
@@ -316,8 +321,8 @@ def extract_douyin_enhanced(url):
                         for key in ['author', 'user', 'authorInfo', 'userInfo']:
                             if key in obj and isinstance(obj[key], dict):
                                 result = deep_find_author(obj[key], depth+1, max_depth)
-                                if result:
-                                    return result
+                            if result:
+                                return result
                         
                         # 遍历所有值
                         for value in obj.values():
@@ -667,8 +672,8 @@ def extract_xiaohongshu_info(url):
                     # 备选：通用nickname字段
                     if not author:
                         nickname_matches = re.findall(r'"nickname"\s*:\s*"([^"]+)"', data_str)
-                        if nickname_matches:
-                            author = nickname_matches[0]
+                    if nickname_matches:
+                        author = nickname_matches[0]
                     
                     if title and author:
                         break
@@ -726,13 +731,42 @@ def extract_bilibili_info(url):
 
 def extract_autohome_info(url):
     """汽车之家专用提取"""
-    # 车家号链接需要登录，使用Playwright处理
+    # 车家号链接需要登录，直接使用Playwright+Cookie（最可靠）
     if 'chejiahao.autohome.com.cn' in url.lower():
         if PLAYWRIGHT_AVAILABLE:
-            return extract_with_playwright_browser(url)
+            return extract_with_playwright_browser(url, use_cookie=bool(AUTOHOME_COOKIE))
         else:
-            # Playwright不可用，降级到requests（可能失败）
-            pass
+            # Playwright不可用，尝试requests+Cookie
+            if AUTOHOME_COOKIE:
+                try:
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Cookie': AUTOHOME_COOKIE,
+                    }
+                    response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
+                    response.encoding = response.apparent_encoding
+                    
+                    if response.status_code != 405:
+                        soup = BeautifulSoup(response.text, 'html.parser')
+                        title_tag = soup.find('title')
+                        if title_tag:
+                            title = title_tag.text.strip()
+                            title = re.sub(r'_车家号_发现车生活_汽车之家$', '', title)
+                            title = re.sub(r'_汽车之家$', '', title)
+                            return {
+                                'title': title,
+                                'author': '需要Playwright提取',
+                                'status': 'partial'
+                            }
+                except:
+                    pass
+            
+            # 无Cookie或失败，返回提示
+            return {
+                'title': '需要Playwright',
+                'author': '需要Playwright',
+                'status': 'failed: Playwright未安装'
+            }
     
     try:
         headers = {
@@ -1790,7 +1824,7 @@ def extract_toutiao_playwright(url):
                                 cleaned_author = re.sub(r'\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}.*$', '', match).strip()
                                 if cleaned_author and len(cleaned_author) >= 2:
                                     author = cleaned_author
-                                    break
+                                break
                     if author:
                         break
             
@@ -1888,8 +1922,13 @@ def extract_platform_info(url):
     else:
         return extract_general_info(url)
 
-def extract_with_playwright_browser(url):
-    """使用 Playwright 浏览器方案处理难处理的平台（百度系、抖音）"""
+def extract_with_playwright_browser(url, use_cookie=False):
+    """使用 Playwright 浏览器方案处理难处理的平台（百度系、抖音、汽车之家车家号）
+    
+    Args:
+        url: 目标URL
+        use_cookie: 是否使用汽车之家Cookie（用于车家号链接）
+    """
     if not PLAYWRIGHT_AVAILABLE:
         return {
             'title': 'Playwright未安装',
@@ -1979,6 +2018,21 @@ def extract_with_playwright_browser(url):
                 viewport=viewport,
             )
             page = context.new_page()
+            
+            # 如果需要使用Cookie（汽车之家车家号）
+            if use_cookie and AUTOHOME_COOKIE and 'autohome' in url.lower():
+                # 将Cookie字符串解析为Playwright格式
+                cookies = []
+                for cookie_item in AUTOHOME_COOKIE.split('; '):
+                    if '=' in cookie_item:
+                        name, value = cookie_item.split('=', 1)
+                        cookies.append({
+                            'name': name,
+                            'value': value,
+                            'domain': '.autohome.com.cn',
+                            'path': '/'
+                        })
+                context.add_cookies(cookies)
             
             # 去除 webdriver 标记
             page.add_init_script("""
@@ -2131,6 +2185,41 @@ def extract_with_playwright_browser(url):
                         if matches:
                             author = matches[0]
                             break
+            
+            # 针对汽车之家车家号
+            elif 'chejiahao.autohome.com.cn' in url_lower or 'autohome' in url_lower:
+                # 方法1: 从class包含author的元素提取
+                author_elem = soup.select_one('[class*="author"]')
+                if author_elem:
+                    author_text = author_elem.get_text(separator='\n', strip=True)
+                    lines = [line.strip() for line in author_text.split('\n') if line.strip()]
+                    if lines:
+                        author = lines[0]
+                        # 清理：去掉数字、"万"、"关注"、"作品"等
+                        author = re.sub(r'\d+\.?\d*万?(关注|作品|粉丝)', '', author)
+                        author = re.sub(r'\s+', '', author)
+                        author = re.sub(r'\d+\.\d*$', '', author)
+                        author = author.strip()
+                
+                # 方法2: 从JSON数据提取
+                if not author:
+                    author_patterns = [
+                        r'"authorName"\s*:\s*"([^"]{2,30})"',
+                        r'"userName"\s*:\s*"([^"]{2,30})"',
+                        r'"author"\s*:\s*{\s*[^}]*"name"\s*:\s*"([^"]+)"',
+                    ]
+                    for pattern in author_patterns:
+                        match = re.search(pattern, html_content)
+                        if match:
+                            potential_author = match.group(1)
+                            if potential_author not in ['汽车之家', 'autohome', '车家号']:
+                                author = potential_author
+                                break
+                
+                # 清理标题后缀
+                if title:
+                    title = re.sub(r'_车家号_发现车生活_汽车之家$', '', title)
+                    title = re.sub(r'_汽车之家$', '', title)
             
             # 通用作者提取（fallback）
             if not author:
