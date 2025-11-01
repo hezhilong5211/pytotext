@@ -71,13 +71,22 @@ except ImportError:
 # 获取方法：登录汽车之家 → F12开发者工具 → Network → 复制Cookie
 AUTOHOME_COOKIE = 'fvlid=1761792285499pxCNZwFDEU; smidV2=202510302155301131d4f2e97e359051b2fb8c17ec368b00552589e37bc9f20; cookieCityId=110100; _hjSessionUser_6545983=eyJpZCI6ImE2M2U5NzkxLWNiYjAtNWIxMi05ZGFiLTY0MTgzNzFkODlmMiIsImNyZWF0ZWQiOjE3NjE4MzI2MTg4NTksImV4aXN0aW5nIjpmYWxzZX0=; _ac=RXrNlinC-4Rw4zsSFd0Yqyw-DiBrdrCL9hKt4T_k7xZic7dtTFnk; sessionuid=56c1ee51-c83d-4b64-8883-d0a5d339ad09; wxlightappsecuritykey=e0b0536abf5d4ae79469c198a6b26d2e; pcpopclub=6008394bb8134ea4a027e92a7ae0035d0d000509; clubUserShow=218105097|0|2|%e4%b9%8b%e5%ae%b6%e8%bd%a6%e5%8f%8b4582693|0|0|0|/g30/M00/CC/34/120X120_0_q87_autohomecar__ChxknGT-zr2AKPdZAACUcoAcBwQ419.png|2025-10-31 08:16:59|0; sessionlogin=6008394bb8134ea4a027e92a7ae0035d0d000509; autouserid=218105097; ahpvno=9; __ah_uuid_ng=u_218105097; ahrlid=1761869822053U5xZIMGbml-1761869824323; .thumbcache_16ba43f8aeefb62e85e0838b29118ea3=rvMw1JEgXqEEAzlUlOAiWRCT7PySODjEJJS9DtE1jLQXaewdtlV17swFhZrOuEAiwxw2B3BmsxgtE8GTjeKeBw%3D%3D; _as=fffmDLaFruqXqPBiJNSu9b-EsGoLNmg3DUvMKyE4bL09mDEjGwMW2g; acw_tc=0a1b054817618698264277139ea24b94974e0b469cf2babc0f32f45fcdaa98'
 
+# ========== 抖音Token/Cookie配置 ==========
+# 如果您有抖音账号的Cookie或Token，可以在这里配置以提高提取成功率
+# 获取方法：
+#   1. 浏览器登录抖音 → F12开发者工具 → Application → Cookies → 复制Cookie字符串
+#   2. 或者从Network请求中复制Cookie请求头
+# 格式：cookie字符串，例如：'sessionid=xxx; sid_guard=xxx; ...'
+DOUYIN_COOKIE = 'enter_pc_once=1; UIFID_TEMP=ccaf4ddfc567c2ea7983832ca74975440c9b4528762c7e101401412a981d7e994942280ddb676ccde4b310e4b6351309e8410ce35b67e4268117e2a78d4baa4760b16db55470e6a06c970caca0c6c170; hevc_supported=true; passport_csrf_token=80919a64f75293d258320fda435190b3; passport_csrf_token_default=80919a64f75293d258320fda435190b3; is_dash_user=1; volume_info=%7B%22isUserMute%22%3Afalse%2C%22isMute%22%3Atrue%2C%22volume%22%3A0.5%7D; bd_ticket_guard_client_web_domain=2; strategyABtestKey=%221761961237.652%22; gulu_source_res=eyJwX2luIjoiYzcwNzI0ZGM2NmUwM2YwNmQxMTM1MzlhM2MxMDhjNmY0NTY3ZGIzZGQyNzU4YWIwZTZhZjc0MzA4NDA4MDMwMCJ9; sdk_source_info=7e276470716a68645a606960273f276364697660272927676c715a6d6069756077273f276364697660272927666d776a68605a607d71606b766c6a6b5a7666776c7571273f275e58272927666a6b766a69605a696c6061273f27636469766027292762696a6764695a7364776c6467696076273f275e582729277672715a646971273f2763646976602729277f6b5a666475273f2763646976602729276d6a6e5a6b6a716c273f2763646976602729276c6b6f5a7f6367273f27636469766027292771273f2735363d35313734333c34333234272927676c715a75776a716a666a69273f2763646976602778; bit_env=FXw0dg_gvft5xHFhB5ZUGdLAACEgHNG2DXfHb4DNFVxhLifLkxOe0SRJ5JeyEdejAHOtWdWrGvJyTZBtO8-Bz3YWQWidfff67jQMZAsx-nz3j_qO4zT0hsTYNtjiOzp6Fd4iE65m-D6MoqlPbBTNP-6Cgrvb-DegUS8fp5iFJl1ZatdGv37cCQj8WM08s-wqtwPM82Eq84nQ56Xpr21Hmv_B8IdK5VyD5GOT7PFjtXtMpiT29wGCzhPHZBqDyRHkeN8rYgw5CxAm6occqT7bKHRPFriTgmdSMgB-2aeHeoGRPS8TPTX_H4kqY83nZwDjbsb8yG8fmYat7HgCDrukztFzmuUIKvjoeEpGNJnFW9J0eFgVDhB3wkawb2vty-ZWAbh6-pJnc-XtqiT-0Pu9ZPf_DGoorDiH2FRZ-5OhsBkWm2I9uhDlMdN5o2VqFBQQ6Rd7H6HayyZsQFQcmU9oN1iDomISseWVUiUUhNMoMR9NurtshunL1HjaPUCsi_48zd1oFarO8T-p_ByoPHC_fDi2ZBKWYf-vRU2Il4IapyA%3D; passport_auth_mix_state=iupniowxafv7kayecu4zotz1dk3nc6mpxdl5dcn1zg3t1ich; download_guide=%222%2F20251101%2F0%22; passport_mfa_token=CjXqjWjMj5PwaWQCz7zrTNijXbeiblmQmavWzV8N5QXwl9Mi3ud%2Fa7xyL5H4hAfMJSokY2eQyhpKCjwAAAAAAAAAAAAAT6jg8x3gRsVSRlWZTbZZIuObX2v%2F1lsDkBP2QbucSb%2F7r6UwOyawMfx5CwPiDQ0S3v8QoquADhj2sdFsIAIiAQOi6zm1; d_ticket=72cc19c022ac601c1a659f44593ca00eb87e2; passport_assist_user=Cjw2ztVTQHJfYrHsEZUC8M99FS4a8soK5mgpS5jRjlXwgJTGwNbCOlRI2M-CIPeuz2tHBzJtY-3_IJo0hQcaSgo8AAAAAAAAAAAAAE-oBsAbL8ONUcNiH2c0t-yra2EYFjMW_H-2TeYp-zkE3mHAe8pB5BOn1SONisPm7VsNEKKrgA4Yia_WVCABIgEDUS1InA%3D%3D; n_mh=zRkB9WKcmqn1dzkIr0aLVj6yTymsPE_Wn7C7MXa4zqA; passport_auth_status=fcfea3448a3b9b74c83985dee24ba7d9%2C; passport_auth_status_ss=fcfea3448a3b9b74c83985dee24ba7d9%2C; sid_guard=5966f4f914bfa71b017aa5aa5d4d8bad%7C1761961371%7C5184000%7CWed%2C+31-Dec-2025+01%3A42%3A51+GMT; uid_tt=810c50dfbbaf99de106b454e4592b61e; uid_tt_ss=810c50dfbbaf99de106b454e4592b61e; sid_tt=5966f4f914bfa71b017aa5aa5d4d8bad; sessionid=5966f4f914bfa71b017aa5aa5d4d8bad; sessionid_ss=5966f4f914bfa71b017aa5aa5d4d8bad; session_tlb_tag=sttt%7C11%7CWWb0-RS_pxsBeqWqXU2Lrf_________RLlLTgTD51d3iLRY4io1jcjifWuPUbNJdDsn39h22JDQ%3D; is_staff_user=false; sid_ucp_v1=1.0.0-KGU5MTk3ZGEyNGQ5MmQzNTIxZDkxZGM0YzU4YTQ2NzIxMDkxNTk5Y2IKHwi6u7DAjAIQm8uVyAYY7zEgDDCb4YHPBTgCQPEHSAQaAmhsIiA1OTY2ZjRmOTE0YmZhNzFiMDE3YWE1YWE1ZDRkOGJhZA; ssid_ucp_v1=1.0.0-KGU5MTk3ZGEyNGQ5MmQzNTIxZDkxZGM0YzU4YTQ2NzIxMDkxNTk5Y2IKHwi6u7DAjAIQm8uVyAYY7zEgDDCb4YHPBTgCQPEHSAQaAmhsIiA1OTY2ZjRmOTE0YmZhNzFiMDE3YWE1YWE1ZDRkOGJhZA; _bd_ticket_crypt_doamin=2; _bd_ticket_crypt_cookie=4b84af0d2e0f8c59c80ff3ac6101b57f; __security_mc_1_s_sdk_sign_data_key_web_protect=b1239fb5-4114-9a83; __security_mc_1_s_sdk_cert_key=27497daf-4fe0-8291; __security_mc_1_s_sdk_crypt_sdk=8635c997-4e19-8d5e; __security_server_data_status=1; login_time=1761961372098; IsDouyinActive=true; stream_recommend_feed_params=%22%7B%5C%22cookie_enabled%5C%22%3Atrue%2C%5C%22screen_width%5C%22%3A1728%2C%5C%22screen_height%5C%22%3A1117%2C%5C%22browser_online%5C%22%3Atrue%2C%5C%22cpu_core_num%5C%22%3A10%2C%5C%22device_memory%5C%22%3A8%2C%5C%22downlink%5C%22%3A1.3%2C%5C%22effective_type%5C%22%3A%5C%223g%5C%22%2C%5C%22round_trip_time%5C%22%3A350%7D%22; SelfTabRedDotControl=%5B%5D; FOLLOW_LIVE_POINT_INFO=%22MS4wLjABAAAAVFOOxQUxAQbIWHbyia4aLOoYaweGWoPsz-jPcVpnNb0%2F1762012800000%2F0%2F1761961377011%2F0%22; home_can_add_dy_2_desktop=%221%22; bd_ticket_guard_client_data=eyJiZC10aWNrZXQtZ3VhcmQtdmVyc2lvbiI6MiwiYmQtdGlja2V0LWd1YXJkLWl0ZXJhdGlvbi12ZXJzaW9uIjoxLCJiZC10aWNrZXQtZ3VhcmQtcmVlLXB1YmxpYy1rZXkiOiJCQ09iNFRsV0JjTllMMFZobTNld0RUd1Y0OU5FWEV6UWRjYnhvSk12RGM4NVJWSnc0UUVDSm1Vemk4d0VRUWxNa2NKL0kxMi9hSitrM0xXZlBzcTZTMWs9IiwiYmQtdGlja2V0LWd1YXJkLXdlYi12ZXJzaW9uIjoyfQ%3D%3D; publish_badge_show_info=%220%2C0%2C0%2C1761961386866%22; ttwid=1%7CjRoEyBW34RdzHhMIRJrVgLYwIydDREQvZdSvVe7jK_A%7C1761961390%7C6e7e2950eb2ac3d1b4c8d2e7f1ad91ea71be87c21b17231fbed74755f7b2e1aa; biz_trace_id=e574e257; odin_tt=cbe1747fb2c2e091328a43767b796bbd6c9530f7959e25afaa7b7026ee4596443c9af229803d60495e1c37eaba2dc0df; bd_ticket_guard_client_data_v2=eyJyZWVfcHVibGljX2tleSI6IkJDT2I0VGxXQmNOWUwwVmhtM2V3RFR3VjQ5TkVYRXpRZGNieG9KTXZEYzg1UlZKdzRRRUNKbVV6aTh3RVFRbE1rY0ovSTEyL2FKK2szTFdmUHNxNlMxaz0iLCJ0c19zaWduIjoidHMuMi5jYzljYWQ5MTkyN2Q5NGVhYTQyNjhiMTVjMjExNGFiYjMxNWE5ZTc4Nzk5YjNiYjk5MDdmZTMxMzFkOGYzNmI1YzRmYmU4N2QyMzE5Y2YwNTMxODYyNGNlZGExNDkxMWNhNDA2ZGVkYmViZWRkYjJlMzBmY2U4ZDRmYTAyNTc1ZCIsInJlcV9jb250ZW50Ijoic2VjX3RzIiwicmVxX3NpZ24iOiJJZCtHOVJIbXJRb2pNektOb2tERWxna3pNdTMySGZxeldtL05HdksrdUJ3PSIsInNlY190cyI6IiNMa2pMNUp5M3NLc3Y4K2Q1Y2ExMzVLSHZMYk1LcmtLM05uaWVoN0VxQjBSQWdZRlNFSzFaY2tBb2FMT1AifQ%3D%3D'  # 已配置Cookie
+
 # 创建全局Session并设置默认headers
 session = requests.Session()
+# requests库会自动处理gzip/deflate解压，但我们需要明确支持
 session.headers.update({
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
     'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-    'Accept-Encoding': 'gzip, deflate, br',
+    'Accept-Encoding': 'gzip, deflate, br',  # requests会自动解压
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
     'Sec-Fetch-Dest': 'document',
@@ -86,6 +95,9 @@ session.headers.update({
     'Sec-Fetch-User': '?1',
     'Cache-Control': 'max-age=0',
 })
+# 确保自动解压gzip内容
+session.mount('https://', requests.adapters.HTTPAdapter())
+session.mount('http://', requests.adapters.HTTPAdapter())
 
 # 全局GUI日志函数引用（由GUI设置）
 _gui_log_function = None
@@ -254,15 +266,30 @@ def extract_weibo_breakthrough(url):
         }
 
 def extract_douyin_enhanced(url):
-    """抖音增强提取 - 深度JSON搜索"""
+    """抖音增强提取 - 深度JSON搜索（支持Token/Cookie）"""
     try:
         headers = {
             'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X) AppleWebKit/605.1.15',
             'Accept': 'text/html,application/xhtml+xml',
             'Referer': 'https://www.douyin.com/',
+            'Accept-Encoding': 'gzip, deflate',  # 只使用gzip和deflate，避免Brotli压缩（requests可能不支持）
         }
         
-        response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
+        # 如果配置了抖音Cookie，添加到请求头中
+        cookies_dict = {}
+        if DOUYIN_COOKIE:
+            # 解析Cookie字符串为字典
+            for cookie_item in DOUYIN_COOKIE.split('; '):
+                if '=' in cookie_item:
+                    name, value = cookie_item.split('=', 1)
+                    cookies_dict[name.strip()] = value.strip()
+        
+        # 发送请求（如果有Cookie则使用）
+        if cookies_dict:
+            response = session.get(url, headers=headers, cookies=cookies_dict, timeout=15, allow_redirects=True)
+        else:
+            response = session.get(url, headers=headers, timeout=15, allow_redirects=True)
+        
         response.encoding = 'utf-8'
         
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -291,82 +318,233 @@ def extract_douyin_enhanced(url):
             else:
                 title = title_text.replace('- 抖音', '').replace('抖音', '').strip()
         
-        # 方法2：从RENDER_DATA深度提取
-        render_match = re.search(r'<script id="RENDER_DATA" type="application/json">([^<]+)</script>', response.text)
-        if render_match:
+        # 方法2：从window._ROUTER_DATA提取（新版本抖音）
+        # 找到window._ROUTER_DATA的位置，然后提取完整的JSON对象（支持嵌套）
+        router_data_pos = response.text.find('window._ROUTER_DATA')
+        if router_data_pos != -1:
             try:
-                json_str = html_module.unescape(render_match.group(1))
-                data = json.loads(json_str)
-                
-                # 超深度递归搜索（增强版）
-                def deep_find_author(obj, depth=0, max_depth=12):
-                    if depth > max_depth:
-                        return None
+                # 找到等号后的位置
+                start_pos = response.text.find('{', router_data_pos)
+                if start_pos != -1:
+                    # 使用平衡括号算法提取完整的JSON对象
+                    brace_count = 0
+                    in_string = False
+                    escape_next = False
+                    json_end = start_pos
                     
-                    if isinstance(obj, dict):
-                        # 扩展作者字段
-                        author_keys = ['nickname', 'authorName', 'unique_id', 'short_id', 
-                                     'userName', 'user_name', 'name', 'author_name',
-                                     'secUid', 'uniqueId', 'screen_name']
-                        for key in author_keys:
-                            if key in obj and isinstance(obj[key], str):
-                                value = obj[key].strip()
-                                # 排除明显不是作者的值
-                                if (2 < len(value) < 50 and 
-                                    value not in ['抖音', 'douyin', 'video', 'image'] and
-                                    not value.startswith('http')):
-                                    return value
+                    for i in range(start_pos, min(start_pos + 500000, len(response.text))):  # 限制最大长度
+                        char = response.text[i]
                         
-                        # 优先搜索author和user字段
-                        for key in ['author', 'user', 'authorInfo', 'userInfo']:
-                            if key in obj and isinstance(obj[key], dict):
-                                result = deep_find_author(obj[key], depth+1, max_depth)
-                            if result:
-                                return result
+                        if escape_next:
+                            escape_next = False
+                            continue
                         
-                        # 遍历所有值
-                        for value in obj.values():
-                            result = deep_find_author(value, depth+1, max_depth)
-                            if result:
-                                return result
+                        if char == '\\':
+                            escape_next = True
+                            continue
+                        
+                        if char == '"' and not escape_next:
+                            in_string = not in_string
+                            continue
+                        
+                        if not in_string:
+                            if char == '{':
+                                brace_count += 1
+                            elif char == '}':
+                                brace_count -= 1
+                                if brace_count == 0:
+                                    json_end = i + 1
+                                    break
                     
-                    elif isinstance(obj, list):
-                        for item in obj:
-                            result = deep_find_author(item, depth+1, max_depth)
-                            if result:
-                                return result
+                    if brace_count == 0:
+                        data_str = response.text[start_pos:json_end]
+                        # JSON解析器会自动处理\u002F等Unicode转义，但我们需要确保它是有效的JSON
+                        # \u002F在JSON中是合法的，JSON解析器会自动解码
+                        data = json.loads(data_str)
+                        
+                        # 尝试从新结构提取：loaderData.video_(id)/page.videoInfoRes.item_list[0]
+                        try:
+                            loader_data = data.get('loaderData', {})
+                            # 查找包含videoInfoRes的key（可能是"video_(id)/page"或类似的）
+                            video_info = None
+                            for key in loader_data:
+                                if isinstance(loader_data[key], dict) and 'videoInfoRes' in loader_data[key]:
+                                    video_info = loader_data[key].get('videoInfoRes', {})
+                                    break
+                            
+                            if video_info:
+                                if 'item_list' in video_info and len(video_info['item_list']) > 0:
+                                    item = video_info['item_list'][0]
+                                    
+                                    # 提取标题
+                                    if not title and 'desc' in item:
+                                        title = item['desc'].strip()
+                                        # 清理标题（移除话题标签）
+                                        title = re.sub(r'#([^#]+)#', '', title).strip()
+                                    
+                                    # 提取作者（即使title已设置，也要提取author）
+                                    if not author and 'author' in item:
+                                        author_obj = item['author']
+                                        if 'nickname' in author_obj:
+                                            author = author_obj['nickname'].strip()
+                        except Exception as e:
+                            # 调试：输出错误信息
+                            print(f"  [抖音新结构提取错误: {str(e)[:50]}]", flush=True)
+                            pass
+                        
+                        # 如果新结构提取失败，使用深度递归搜索（兼容旧版本）
+                        if not author or not title:
+                            def deep_find_author(obj, depth=0, max_depth=12):
+                                if depth > max_depth:
+                                    return None
+                                
+                                if isinstance(obj, dict):
+                                    # 扩展作者字段
+                                    author_keys = ['nickname', 'authorName', 'unique_id', 'short_id', 
+                                                 'userName', 'user_name', 'name', 'author_name',
+                                                 'secUid', 'uniqueId', 'screen_name']
+                                    for key in author_keys:
+                                        if key in obj and isinstance(obj[key], str):
+                                            value = obj[key].strip()
+                                            # 排除明显不是作者的值
+                                            if (2 < len(value) < 50 and 
+                                                value not in ['抖音', 'douyin', 'video', 'image'] and
+                                                not value.startswith('http')):
+                                                return value
+                                    
+                                    # 优先搜索author和user字段
+                                    for key in ['author', 'user', 'authorInfo', 'userInfo']:
+                                        if key in obj and isinstance(obj[key], dict):
+                                            result = deep_find_author(obj[key], depth+1, max_depth)
+                                            if result:
+                                                return result
+                                    
+                                    # 遍历所有值
+                                    for value in obj.values():
+                                        result = deep_find_author(value, depth+1, max_depth)
+                                        if result:
+                                            return result
+                                
+                                elif isinstance(obj, list):
+                                    for item in obj:
+                                        result = deep_find_author(item, depth+1, max_depth)
+                                        if result:
+                                            return result
+                                
+                                return None
+                            
+                            if not author:
+                                author = deep_find_author(data)
+                            
+                            # 同时尝试提取标题
+                            if not title:
+                                def deep_find_title(obj, depth=0, max_depth=10):
+                                    if depth > max_depth:
+                                        return None
+                                    if isinstance(obj, dict):
+                                        for key in ['title', 'desc', 'description', 'content']:
+                                            if key in obj and isinstance(obj[key], str):
+                                                value = obj[key].strip()
+                                                if 10 < len(value) < 500:
+                                                    return value
+                                        for value in obj.values():
+                                            result = deep_find_title(value, depth+1, max_depth)
+                                            if result:
+                                                return result
+                                    elif isinstance(obj, list):
+                                        for item in obj:
+                                            result = deep_find_title(item, depth+1, max_depth)
+                                            if result:
+                                                return result
+                                    return None
+                                
+                                title = deep_find_title(data)
+                    else:
+                        # 括号不匹配，无法解析JSON
+                        pass
+            except Exception as e:
+                import traceback
+                print(f"  [抖音JSON解析错误: {str(e)[:100]}]", flush=True)
+                # 调试时取消注释下面这行
+                # traceback.print_exc()
+        
+        # 方法2.5：兼容旧版本的RENDER_DATA（如果新版本未找到）
+        if not author or not title:
+            render_match = re.search(r'<script id="RENDER_DATA" type="application/json">([^<]+)</script>', response.text)
+            if render_match:
+                try:
+                    json_str = html_module.unescape(render_match.group(1))
+                    data = json.loads(json_str)
                     
-                    return None
-                
-                if not author:
-                    author = deep_find_author(data)
-                
-                # 同时尝试提取标题
-                if not title:
-                    def deep_find_title(obj, depth=0, max_depth=10):
+                    # 超深度递归搜索（增强版）
+                    def deep_find_author_old(obj, depth=0, max_depth=12):
                         if depth > max_depth:
                             return None
+                        
                         if isinstance(obj, dict):
-                            for key in ['title', 'desc', 'description', 'content']:
+                            # 扩展作者字段
+                            author_keys = ['nickname', 'authorName', 'unique_id', 'short_id', 
+                                         'userName', 'user_name', 'name', 'author_name',
+                                         'secUid', 'uniqueId', 'screen_name']
+                            for key in author_keys:
                                 if key in obj and isinstance(obj[key], str):
                                     value = obj[key].strip()
-                                    if 10 < len(value) < 500:
+                                    # 排除明显不是作者的值
+                                    if (2 < len(value) < 50 and 
+                                        value not in ['抖音', 'douyin', 'video', 'image'] and
+                                        not value.startswith('http')):
                                         return value
+                            
+                            # 优先搜索author和user字段
+                            for key in ['author', 'user', 'authorInfo', 'userInfo']:
+                                if key in obj and isinstance(obj[key], dict):
+                                    result = deep_find_author_old(obj[key], depth+1, max_depth)
+                                    if result:
+                                        return result
+                            
+                            # 遍历所有值
                             for value in obj.values():
-                                result = deep_find_title(value, depth+1, max_depth)
+                                result = deep_find_author_old(value, depth+1, max_depth)
                                 if result:
                                     return result
+                        
                         elif isinstance(obj, list):
                             for item in obj:
-                                result = deep_find_title(item, depth+1, max_depth)
+                                result = deep_find_author_old(item, depth+1, max_depth)
                                 if result:
                                     return result
+                        
                         return None
                     
-                    title = deep_find_title(data)
+                    if not author:
+                        author = deep_find_author_old(data)
+                    
+                    # 同时尝试提取标题
+                    if not title:
+                        def deep_find_title_old(obj, depth=0, max_depth=10):
+                            if depth > max_depth:
+                                return None
+                            if isinstance(obj, dict):
+                                for key in ['title', 'desc', 'description', 'content']:
+                                    if key in obj and isinstance(obj[key], str):
+                                        value = obj[key].strip()
+                                        if 10 < len(value) < 500:
+                                            return value
+                                for value in obj.values():
+                                    result = deep_find_title_old(value, depth+1, max_depth)
+                                    if result:
+                                        return result
+                            elif isinstance(obj, list):
+                                for item in obj:
+                                    result = deep_find_title_old(item, depth+1, max_depth)
+                                    if result:
+                                        return result
+                            return None
+                        
+                        title = deep_find_title_old(data)
                 
-            except Exception as e:
-                print(f"  [抖音JSON解析错误: {str(e)[:30]}]", flush=True)
+                except Exception as e:
+                    print(f"  [抖音RENDER_DATA解析错误: {str(e)[:30]}]", flush=True)
         
         # 方法3：扩展正则表达式搜索
         if not author:
@@ -396,6 +574,25 @@ def extract_douyin_enhanced(url):
             meta_author = soup.find('meta', {'name': 'author'})
             if meta_author:
                 author = meta_author.get('content', '').strip()
+        
+        # 如果requests方式提取失败，且是标准视频链接或note链接，尝试使用Playwright
+        if (not title or not author) and ('www.douyin.com/video/' in url.lower() or 
+                                          'douyin.com/video/' in url.lower() or 
+                                          'douyin.com/note/' in url.lower()):
+            if PLAYWRIGHT_AVAILABLE:
+                try:
+                    playwright_result = extract_douyin_playwright(url)
+                    # 如果Playwright成功获取到数据，使用Playwright的结果
+                    if '未找到' not in playwright_result.get('title', '') and '未找到' not in playwright_result.get('author', ''):
+                        return playwright_result
+                    # 如果Playwright也失败，但至少获取到了标题或作者，合并结果
+                    if '未找到' not in playwright_result.get('title', ''):
+                        title = playwright_result.get('title', title)
+                    if '未找到' not in playwright_result.get('author', ''):
+                        author = playwright_result.get('author', author)
+                except Exception as e:
+                    # Playwright失败，继续使用requests的结果
+                    pass
         
         return {
             'title': title if title else '未找到标题',
@@ -1620,6 +1817,304 @@ def extract_dongchedi_info(url):
             pass
     
     return playwright_result
+
+def extract_douyin_playwright(url):
+    """抖音Playwright提取 - 用于处理标准视频链接（www.douyin.com/video/）"""
+    if not PLAYWRIGHT_AVAILABLE:
+        return {
+            'title': 'Playwright未安装',
+            'author': '未找到',
+            'status': 'failed: Playwright未安装'
+        }
+    
+    try:
+        with sync_playwright() as p:
+            # 尝试多种方式启动浏览器
+            browser = None
+            launch_errors = []
+            
+            # 方式1: 默认启动
+            if not browser:
+                try:
+                    browser = p.chromium.launch(
+                        headless=True,
+                        args=[
+                            '--disable-blink-features=AutomationControlled',
+                            '--disable-dev-shm-usage',
+                            '--no-sandbox'
+                        ]
+                    )
+                except Exception as e:
+                    launch_errors.append(f"默认启动失败: {str(e)[:50]}")
+            
+            # 方式2: 不指定executable_path
+            if not browser:
+                try:
+                    browser = p.chromium.launch(
+                        headless=True,
+                        executable_path=None,
+                        args=[
+                            '--disable-blink-features=AutomationControlled',
+                            '--disable-dev-shm-usage',
+                            '--no-sandbox'
+                        ]
+                    )
+                except Exception as e:
+                    launch_errors.append(f"无路径启动失败: {str(e)[:50]}")
+            
+            # 如果所有方式都失败
+            if not browser:
+                error_msg = "; ".join(launch_errors) if launch_errors else "未知错误"
+                return {
+                    'title': '浏览器启动失败',
+                    'author': '未找到',
+                    'status': f'failed: Browser launch error - {error_msg}'
+                }
+            
+            context = browser.new_context(
+                user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                viewport={'width': 1920, 'height': 1080},
+            )
+            page = context.new_page()
+            
+            # 如果有配置的Cookie，添加到浏览器
+            if DOUYIN_COOKIE:
+                cookies_list = []
+                for cookie_item in DOUYIN_COOKIE.split('; '):
+                    if '=' in cookie_item:
+                        name, value = cookie_item.split('=', 1)
+                        cookies_list.append({
+                            'name': name.strip(),
+                            'value': value.strip(),
+                            'domain': '.douyin.com',
+                            'path': '/'
+                        })
+                if cookies_list:
+                    context.add_cookies(cookies_list)
+            
+            # 增强反检测
+            page.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', {
+                    get: () => undefined
+                });
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => [1, 2, 3, 4, 5]
+                });
+                Object.defineProperty(navigator, 'languages', {
+                    get: () => ['zh-CN', 'zh', 'en']
+                });
+            """)
+            
+            # 访问页面（使用domcontentloaded更快，避免网络请求过多导致超时）
+            try:
+                page.goto(url, wait_until='domcontentloaded', timeout=30000)
+                # 等待JavaScript渲染和数据加载
+                time.sleep(8)  # 增加等待时间确保数据加载完成
+                # 尝试等待关键元素或数据出现
+                try:
+                    page.wait_for_function('window._ROUTER_DATA !== undefined', timeout=5000)
+                except:
+                    pass
+            except Exception as e:
+                # 如果超时，继续尝试获取内容
+                try:
+                    time.sleep(5)
+                except:
+                    pass
+            
+            # 获取页面内容
+            html_content = page.content()
+            browser.close()
+            
+            if not html_content or len(html_content) < 500:
+                return {
+                    'title': '页面加载失败',
+                    'author': '未找到',
+                    'status': 'failed: 页面内容为空'
+                }
+            
+            # 解析HTML
+            soup = BeautifulSoup(html_content, 'html.parser')
+            
+            title = None
+            author = None
+            
+            # 提取标题
+            title_elem = soup.find('title')
+            if title_elem:
+                title_text = title_elem.get_text().strip()
+                if ' - ' in title_text:
+                    parts = title_text.split(' - ')
+                    if len(parts) >= 2:
+                        title = parts[0].strip()
+                else:
+                    title = title_text.replace('- 抖音', '').replace('抖音', '').strip()
+            
+            # 提取数据 - 优先尝试window._ROUTER_DATA，然后尝试RENDER_DATA
+            # 方法1: window._ROUTER_DATA（用于短链接）
+            router_data_pos = html_content.find('window._ROUTER_DATA')
+            if router_data_pos != -1:
+                try:
+                    start_pos = html_content.find('{', router_data_pos)
+                    if start_pos != -1:
+                        brace_count = 0
+                        in_string = False
+                        escape_next = False
+                        json_end = start_pos
+                        
+                        for i in range(start_pos, min(start_pos + 500000, len(html_content))):
+                            char = html_content[i]
+                            
+                            if escape_next:
+                                escape_next = False
+                                continue
+                            
+                            if char == '\\':
+                                escape_next = True
+                                continue
+                            
+                            if char == '"' and not escape_next:
+                                in_string = not in_string
+                                continue
+                            
+                            if not in_string:
+                                if char == '{':
+                                    brace_count += 1
+                                elif char == '}':
+                                    brace_count -= 1
+                                    if brace_count == 0:
+                                        json_end = i + 1
+                                        break
+                        
+                        if brace_count == 0:
+                            data_str = html_content[start_pos:json_end]
+                            data = json.loads(data_str)
+                            
+                            # 从数据结构提取
+                            loader_data = data.get('loaderData', {})
+                            for key in loader_data:
+                                if isinstance(loader_data[key], dict) and 'videoInfoRes' in loader_data[key]:
+                                    video_info = loader_data[key].get('videoInfoRes', {})
+                                    if 'item_list' in video_info and len(video_info['item_list']) > 0:
+                                        item = video_info['item_list'][0]
+                                        
+                                        if not title and 'desc' in item:
+                                            title = item['desc'].strip()
+                                            title = re.sub(r'#([^#]+)#', '', title).strip()
+                                        
+                                        if not author and 'author' in item:
+                                            author_obj = item['author']
+                                            if 'nickname' in author_obj:
+                                                author = author_obj['nickname'].strip()
+                                        break
+                except Exception as e:
+                    pass
+            
+            # 方法2: RENDER_DATA（用于标准视频链接）
+            if not author or not title:
+                render_match = re.search(r'<script id="RENDER_DATA" type="application/json">([^<]+)</script>', html_content)
+                if render_match:
+                    try:
+                        import html as html_module
+                        from urllib.parse import unquote
+                        # RENDER_DATA是URL编码的，需要先解码
+                        raw_data = render_match.group(1)
+                        # 先URL解码，然后HTML unescape
+                        json_str = html_module.unescape(unquote(raw_data))
+                        data = json.loads(json_str)
+                        
+                        # 深度递归搜索作者
+                        def deep_find_author(obj, depth=0, max_depth=12):
+                            if depth > max_depth:
+                                return None
+                            
+                            if isinstance(obj, dict):
+                                author_keys = ['nickname', 'authorName', 'unique_id', 'userName', 'name']
+                                for key in author_keys:
+                                    if key in obj and isinstance(obj[key], str):
+                                        value = obj[key].strip()
+                                        if (2 < len(value) < 50 and 
+                                            value not in ['抖音', 'douyin', 'video', 'image'] and
+                                            not value.startswith('http')):
+                                            return value
+                                
+                                for key in ['author', 'user', 'authorInfo', 'userInfo']:
+                                    if key in obj and isinstance(obj[key], dict):
+                                        result = deep_find_author(obj[key], depth+1, max_depth)
+                                        if result:
+                                            return result
+                                
+                                for value in obj.values():
+                                    result = deep_find_author(value, depth+1, max_depth)
+                                    if result:
+                                        return result
+                            
+                            elif isinstance(obj, list):
+                                for item in obj:
+                                    result = deep_find_author(item, depth+1, max_depth)
+                                    if result:
+                                        return result
+                            
+                            return None
+                        
+                        if not author:
+                            author = deep_find_author(data)
+                        
+                        # 提取标题
+                        if not title:
+                            def deep_find_title(obj, depth=0, max_depth=10):
+                                if depth > max_depth:
+                                    return None
+                                if isinstance(obj, dict):
+                                    for key in ['title', 'desc', 'description', 'content']:
+                                        if key in obj and isinstance(obj[key], str):
+                                            value = obj[key].strip()
+                                            if 10 < len(value) < 500:
+                                                return value
+                                    for value in obj.values():
+                                        result = deep_find_title(value, depth+1, max_depth)
+                                        if result:
+                                            return result
+                                elif isinstance(obj, list):
+                                    for item in obj:
+                                        result = deep_find_title(item, depth+1, max_depth)
+                                        if result:
+                                            return result
+                                return None
+                            
+                            title = deep_find_title(data)
+                    except Exception as e:
+                        pass
+            
+            # 如果还是没找到，尝试从正则表达式提取
+            if not author:
+                patterns = [
+                    r'"nickname"\s*:\s*"([^"]{2,30})"',
+                    r'"authorName"\s*:\s*"([^"]{2,30})"',
+                ]
+                for pattern in patterns:
+                    matches = re.findall(pattern, html_content)
+                    if matches:
+                        for match in matches:
+                            if (match not in ['抖音', 'douyin', 'video'] and 
+                                len(match) > 1 and not match.startswith('http')):
+                                author = match
+                                break
+                        if author:
+                            break
+            
+            return {
+                'title': title if title else '未找到标题',
+                'author': author if author else '未找到作者',
+                'status': 'success (Playwright)' if (title and author) else 'partial (Playwright)'
+            }
+            
+    except Exception as e:
+        return {
+            'title': '提取失败',
+            'author': '提取失败',
+            'status': f'failed: {str(e)[:50]}'
+        }
 
 def extract_toutiao_playwright(url):
     """今日头条专用 - Playwright增强版"""
